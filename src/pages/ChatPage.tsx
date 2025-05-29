@@ -6,10 +6,15 @@ import { supabase } from '@/services/supabaseClient';
 
 interface ConversationMessage {
   id: number;
-  type: 'user' | 'system' | 'data' | 'error';
+  type: 'user' | 'system' | 'data' | 'error' | 'collaboration_response';
   content: string;
   data?: any[];
   timestamp: Date;
+  collaboration_task_id?: string;
+  collaboration_response_from?: {
+    mindop_id: string;
+    mindop_name: string;
+  };
 }
 
 interface ConnectedMindOp {
@@ -26,18 +31,37 @@ interface CollaborationTarget {
   description?: string;
 }
 
+interface CollaborationTask {
+  id: string;
+  requester_mindop_id: string;
+  target_mindop_id: string;
+  query: string;
+  status: 'pending' | 'processing_by_target' | 'target_processing_complete' | 'completed' | 'failed';
+  response?: string;
+  created_at: string;
+  updated_at: string;
+  target_mindop?: {
+    id: string;
+    mindop_name: string;
+    mindop_description?: string;
+  };
+}
+
 const ChatPage: React.FC = () => {
   const { user, userMindOpId } = useAuth();
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeMode, setActiveMode] = useState<'mindop' | 'collaborate'>('mindop');
-  
-  // Estados para colaboración dirigida
+    // Estados para colaboración dirigida
   const [connectedMindOps, setConnectedMindOps] = useState<ConnectedMindOp[]>([]);
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<CollaborationTarget | null>(null);
   const [showTargetSelector, setShowTargetSelector] = useState(false);
   const [availableTargets, setAvailableTargets] = useState<CollaborationTarget[]>([]);
+  
+  // Estados para el polling de respuestas de colaboración
+  const [pendingCollaborationTasks, setPendingCollaborationTasks] = useState<Set<string>>(new Set());
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   
   // Estado para conversación (se actualiza dinámicamente)
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
@@ -128,11 +152,49 @@ Puedes preguntarme sobre:
   useEffect(() => {
     initializeCollaborationTargets();
   }, [connectedMindOps, userMindOpId]);
-
   // Auto-scroll al último mensaje
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation, isLoading]);
+
+  // Efecto para el polling de respuestas de colaboración
+  useEffect(() => {
+    if (!userMindOpId || pendingCollaborationTasks.size === 0) {
+      // Limpiar el intervalo si no hay tareas pendientes
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        setPollingInterval(null);
+      }
+      return;
+    }
+
+    // Iniciar polling solo si no hay uno activo
+    if (!pollingInterval) {
+      console.log('🔄 Iniciando polling para respuestas de colaboración...');
+      const interval = setInterval(async () => {
+        await checkForCollaborationResponses();
+      }, 8000); // Revisar cada 8 segundos
+
+      setPollingInterval(interval);
+    }
+
+    // Cleanup al desmontar
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        setPollingInterval(null);
+      }
+    };
+  }, [userMindOpId, pendingCollaborationTasks.size]);
+
+  // Cleanup del polling al desmontar el componente
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, []);
 
   const loadUserConnections = async () => {
     if (!userMindOpId) return;
@@ -202,12 +264,109 @@ Puedes preguntarme sobre:
       // Seleccionar por defecto el propio MindOp si no hay selección
       if (!selectedTarget && targets.length > 0) {
         setSelectedTarget(targets[0]);
+      }    } catch (error) {
+      console.error('Error inicializando targets:', error);
+    }
+  };
+
+  // Función para verificar respuestas de colaboración pendientes
+  const checkForCollaborationResponses = async () => {
+    if (!userMindOpId || pendingCollaborationTasks.size === 0) return;
+
+    try {
+      console.log('🔄 Verificando respuestas de colaboración...', Array.from(pendingCollaborationTasks));      // Consultar tareas completadas
+      const { data: completedTasks, error } = await supabase
+        .from('mindop_collaboration_tasks')
+        .select(`
+          id,
+          requester_mindop_id,
+          target_mindop_id,
+          query,
+          status,
+          response,
+          created_at,
+          updated_at,
+          target_mindop:target_mindop_id (
+            id,
+            mindop_name,
+            mindop_description
+          )
+        `)
+        .eq('requester_mindop_id', userMindOpId)
+        .eq('status', 'target_processing_complete')
+        .in('id', Array.from(pendingCollaborationTasks));
+
+      if (error) {
+        console.error('❌ Error verificando respuestas de colaboración:', error);
+        return;
+      }
+
+      if (!completedTasks || completedTasks.length === 0) {
+        console.log('📭 No hay respuestas nuevas');
+        return;
+      }
+
+      console.log(`✅ Encontradas ${completedTasks.length} respuestas nuevas`);      // Procesar cada respuesta
+      for (const task of completedTasks) {
+        await processCollaborationResponse(task as unknown as CollaborationTask);
       }
 
     } catch (error) {
-      console.error('Error inicializando targets:', error);
+      console.error('❌ Error en checkForCollaborationResponses:', error);
     }
-  };  const callMindOpService = async (query: string): Promise<any> => {
+  };
+
+  // Función para procesar una respuesta de colaboración individual
+  const processCollaborationResponse = async (task: CollaborationTask) => {
+    if (!task.response || !task.target_mindop) {
+      console.warn('⚠️ Tarea sin respuesta o target_mindop:', task.id);
+      return;
+    }
+
+    console.log(`📨 Procesando respuesta de ${task.target_mindop.mindop_name}:`, task.response.substring(0, 100) + '...');
+
+    // Crear mensaje de respuesta de colaboración
+    const collaborationMessage: ConversationMessage = {
+      id: Date.now() + Math.random(),
+      type: 'collaboration_response',
+      content: task.response,
+      timestamp: new Date(task.updated_at),
+      collaboration_task_id: task.id,
+      collaboration_response_from: {
+        mindop_id: task.target_mindop.id,
+        mindop_name: task.target_mindop.mindop_name
+      }
+    };
+
+    // Agregar mensaje a la conversación
+    setConversation(prev => [...prev, collaborationMessage]);
+
+    // Remover de tareas pendientes
+    setPendingCollaborationTasks(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(task.id);
+      return newSet;
+    });
+
+    // Actualizar estado de la tarea a 'completed'
+    try {
+      const { error: updateError } = await supabase
+        .from('mindop_collaboration_tasks')
+        .update({
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', task.id);
+
+      if (updateError) {
+        console.error('❌ Error actualizando estado de tarea a completed:', updateError);
+      } else {
+        console.log('✅ Tarea marcada como completada:', task.id);
+      }
+    } catch (error) {
+      console.error('❌ Error inesperado actualizando estado de tarea:', error);
+    }
+  };const callMindOpService = async (query: string): Promise<any> => {
     const { data: { session } } = await supabase.auth.getSession();
     
     console.log('🔐 Sesión activa:', !!session);
@@ -251,7 +410,6 @@ Puedes preguntarme sobre:
     
     return result;
   };
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || isLoading) return;
@@ -264,9 +422,12 @@ Puedes preguntarme sobre:
     };
 
     setConversation(prev => [...prev, userMessage]);
+    const originalQuery = inputText;
     setInputText('');
-    setIsLoading(true);    try {
-      const response = await callMindOpService(inputText);
+    setIsLoading(true);
+
+    try {
+      const response = await callMindOpService(originalQuery);
       
       if (response.success && response.response) {
         const systemMessage: ConversationMessage = {
@@ -276,6 +437,22 @@ Puedes preguntarme sobre:
           timestamp: new Date(),
         };
         setConversation(prev => [...prev, systemMessage]);
+
+        // Si es una respuesta de colaboración y contiene collaboration_task_id, agregarlo a tareas pendientes
+        if (response.collaboration_task_id) {
+          console.log('📝 Nueva tarea de colaboración creada:', response.collaboration_task_id);
+          setPendingCollaborationTasks(prev => new Set([...prev, response.collaboration_task_id]));
+          
+          // Mostrar mensaje informativo sobre el estado de la colaboración
+          const collaborationStatusMessage: ConversationMessage = {
+            id: Date.now() + 2,
+            type: 'system',
+            content: `🤝 **Solicitud de colaboración enviada**\n\nTu consulta ha sido enviada al MindOp colaborador. Te notificaremos cuando tengamos una respuesta.\n\n_Verificando respuestas cada 8 segundos..._`,
+            timestamp: new Date(),
+            collaboration_task_id: response.collaboration_task_id
+          };
+          setConversation(prev => [...prev, collaborationStatusMessage]);
+        }
       } else {
         const errorMessage: ConversationMessage = {
           id: Date.now() + 1,
@@ -305,6 +482,8 @@ Puedes preguntarme sobre:
           return 'bg-gray-900 text-white ml-auto max-w-xs lg:max-w-md rounded-2xl shadow-sm';
         case 'system':
           return 'bg-white text-gray-900 border border-gray-200 max-w-xs lg:max-w-lg rounded-2xl shadow-sm';
+        case 'collaboration_response':
+          return 'bg-blue-50 text-blue-900 border border-blue-200 max-w-xs lg:max-w-lg rounded-2xl shadow-sm';
         case 'data':
           return 'bg-white text-gray-900 border border-gray-200 max-w-full rounded-2xl shadow-sm';
         case 'error':
@@ -317,6 +496,16 @@ Puedes preguntarme sobre:
     return (
       <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} mb-6`}>
         <div className={`px-5 py-3 ${getMessageStyles()}`}>
+          {/* Header especial para respuestas de colaboración */}
+          {msg.type === 'collaboration_response' && msg.collaboration_response_from && (
+            <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-blue-200">
+              <Users className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-semibold text-blue-800">
+                Respuesta de {msg.collaboration_response_from.mindop_name}
+              </span>
+            </div>
+          )}
+          
           <p className="text-sm leading-relaxed mb-1 whitespace-pre-wrap">{msg.content}</p>
           
           {/* Render data table if present */}
@@ -351,6 +540,7 @@ Puedes preguntarme sobre:
               )}
             </div>
           )}          
+          
           <p className="text-xs mt-3 opacity-60 text-right">
             {msg.timestamp.toLocaleTimeString()}
           </p>
@@ -359,6 +549,26 @@ Puedes preguntarme sobre:
     );
   };  return (
     <div className="h-full flex flex-col bg-gray-50">
+      {/* Indicador de Tareas de Colaboración Pendientes */}
+      {pendingCollaborationTasks.size > 0 && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2">
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <Users className="w-4 h-4 text-blue-600" />
+              </div>
+              <span className="text-sm text-blue-800 font-medium">
+                {pendingCollaborationTasks.size} solicitud{pendingCollaborationTasks.size !== 1 ? 'es' : ''} de colaboración pendiente{pendingCollaborationTasks.size !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="text-xs text-blue-600">
+              Verificando respuestas...
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Área de Visualización de Conversación */}
       <div className="flex-1 overflow-y-auto px-4 py-6 min-h-0">
         <div className="max-w-2xl mx-auto">
@@ -531,9 +741,7 @@ Puedes preguntarme sobre:
                   <PlaneTakeoff className="w-4 h-4" />
                 )}
               </button>
-            </div>
-
-            {/* Indicador de Conexiones Disponibles */}
+            </div>            {/* Indicador de Conexiones Disponibles */}
             {!loadingConnections && connectedMindOps.length > 0 && activeMode === 'collaborate' && (
               <div className="flex items-center justify-center pt-1">
                 <div className="flex items-center px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full">
@@ -544,7 +752,19 @@ Puedes preguntarme sobre:
                 </div>
               </div>
             )}
-          </form>        </div>
+
+            {/* Debug: Indicador de Polling (solo en desarrollo) */}
+            {import.meta.env.DEV && pendingCollaborationTasks.size > 0 && (
+              <div className="flex items-center justify-center pt-1">
+                <div className="flex items-center px-2 py-1 bg-yellow-50 border border-yellow-200 rounded-full">
+                  <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5 animate-pulse"></div>
+                  <span className="text-xs text-yellow-700 font-medium">
+                    Polling activo: {Array.from(pendingCollaborationTasks).length} tarea{pendingCollaborationTasks.size !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+            )}
+          </form></div>
       </div>
     </div>
   );
