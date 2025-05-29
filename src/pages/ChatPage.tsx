@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, ChevronDown, Users, User, PlaneTakeoff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
@@ -37,8 +37,13 @@ const ChatPage: React.FC = () => {
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<CollaborationTarget | null>(null);
   const [showTargetSelector, setShowTargetSelector] = useState(false);
-  const [availableTargets, setAvailableTargets] = useState<CollaborationTarget[]>([]);  // Estado para conversación (se actualiza dinámicamente)
+  const [availableTargets, setAvailableTargets] = useState<CollaborationTarget[]>([]);
+  
+  // Estado para conversación (se actualiza dinámicamente)
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
+  
+  // Ref para auto-scroll
+  const conversationEndRef = useRef<HTMLDivElement>(null);
 
   // Inicializar mensaje de bienvenida
   useEffect(() => {
@@ -119,11 +124,15 @@ Puedes preguntarme sobre:
       initializeCollaborationTargets();
     }
   }, [userMindOpId]);
-
   // Inicializar targets disponibles cuando cambian las conexiones
   useEffect(() => {
     initializeCollaborationTargets();
   }, [connectedMindOps, userMindOpId]);
+
+  // Auto-scroll al último mensaje
+  useEffect(() => {
+    conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [conversation, isLoading]);
 
   const loadUserConnections = async () => {
     if (!userMindOpId) return;
@@ -349,196 +358,193 @@ Puedes preguntarme sobre:
       </div>
     );
   };  return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Main Conversation Area */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-6 min-h-0">
-        <div className="max-w-lg mx-auto">
-          <div className="space-y-2 mb-6">
-            {conversation.map((msg) => renderMessage(msg))}
-              {/* Loading indicator */}
+    <div className="h-full flex flex-col bg-gray-50">
+      {/* Área de Visualización de Conversación */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 min-h-0">
+        <div className="max-w-2xl mx-auto">
+          <div className="space-y-4">            {conversation.map((msg) => renderMessage(msg))}
+            
+            {/* Loading indicator */}
             {isLoading && (
-              <div className="flex justify-start mb-2">
+              <div className="flex justify-start">
                 <div className="bg-white border border-gray-200 text-gray-600 px-4 py-3 rounded-2xl shadow-sm max-w-xs flex items-center space-x-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm">Analizando tus datos...</span>
                 </div>
               </div>
             )}
+            
+            {/* Elemento para auto-scroll */}
+            <div ref={conversationEndRef} />
           </div>
         </div>
       </div>
 
-      {/* Input Area - Fixed at bottom */}
-      <div className="bg-white border-t border-gray-200 px-4 py-4">
+      {/* Barra de Entrada Fija */}
+      <div className="border-t border-gray-200 bg-white px-4 py-4">
         <div className="max-w-2xl mx-auto">
-          {/* Text Input Bar */}
-          <form onSubmit={handleSendMessage} className="mb-4">
-            <div className="relative bg-white border border-gray-200 rounded-3xl shadow-lg focus-within:shadow-xl transition-all duration-200 focus-within:border-gray-300">
-              <div className="flex items-end px-4 py-3">
-                <div className="flex-1 min-h-[20px] max-h-[120px]">
-                  <textarea
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage(e);
+          <form onSubmit={handleSendMessage} className="space-y-3">
+            {/* Selector de Colaboración Integrado */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {/* Botón Mi MindOp */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMode('mindop');
+                    setShowTargetSelector(false);
+                    const ownTarget = availableTargets.find(t => t.type === 'own');
+                    if (ownTarget) {
+                      setSelectedTarget(ownTarget);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 flex items-center space-x-1.5 ${
+                    activeMode === 'mindop'
+                      ? 'bg-gray-900 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>Mi MindOp</span>
+                </button>
+
+                {/* Botón Colaborar con Selector Integrado */}
+                <div className="relative" data-target-selector>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveMode('collaborate');
+                      if (availableTargets.length > 1) {
+                        setShowTargetSelector(!showTargetSelector);
+                      } else {
+                        setShowTargetSelector(false);
+                        if (!selectedTarget && availableTargets.length > 0) {
+                          setSelectedTarget(availableTargets[0]);
+                        }
                       }
                     }}
-                    placeholder="Escribe tu pregunta aquí..."
-                    disabled={isLoading}
-                    rows={1}
-                    className="w-full resize-none border-0 bg-transparent text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-0 disabled:opacity-50 text-base leading-6"
-                    style={{
-                      minHeight: '24px',
-                      maxHeight: '120px'
-                    }}
-                    onInput={(e) => {
-                      const target = e.target as HTMLTextAreaElement;
-                      target.style.height = 'auto';
-                      target.style.height = Math.min(target.scrollHeight, 120) + 'px';
-                    }}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isLoading || !inputText.trim()}
-                  className="ml-3 flex items-center justify-center w-8 h-8 bg-gray-900 text-white rounded-full hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <PlaneTakeoff className="w-4 h-4" />
+                    disabled={loadingConnections}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 flex items-center space-x-1.5 ${
+                      activeMode === 'collaborate'
+                        ? 'bg-gray-900 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50'
+                    }`}
+                  >
+                    {loadingConnections ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Users className="w-3.5 h-3.5" />
+                    )}
+                    <span>Colaborar</span>
+                    {activeMode === 'collaborate' && availableTargets.length > 1 && (
+                      <ChevronDown className="w-3 h-3" />
+                    )}
+                  </button>
+
+                  {/* Dropdown para selección de target */}
+                  {showTargetSelector && activeMode === 'collaborate' && availableTargets.length > 1 && (
+                    <div className="absolute bottom-full mb-2 left-0 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                      {availableTargets.map((target) => (
+                        <button
+                          key={target.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTarget(target);
+                            setShowTargetSelector(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                            selectedTarget?.id === target.id ? 'bg-blue-50' : ''
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            {target.type === 'connected' ? (
+                              <Users className="w-4 h-4 text-blue-600" />
+                            ) : (
+                              <User className="w-4 h-4 text-gray-600" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">
+                                {target.name}
+                              </div>
+                              {target.description && (
+                                <div className="text-xs text-gray-500 truncate">
+                                  {target.description}
+                                </div>
+                              )}
+                              <div className="text-xs text-gray-400">
+                                {target.type === 'own' ? 'Tu MindOp' : 'Conectado'}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   )}
-                </button>
+                </div>
               </div>
-            </div>
-          </form>
 
-          {/* Mode Buttons */}
-          <div className="flex justify-center items-center space-x-2">{/* Resto del contenido de los botones permanece igual */}
-            <button
-              onClick={() => {
-                setActiveMode('mindop');
-                setShowTargetSelector(false);
-                // Al cambiar a modo propio, seleccionar automáticamente el propio MindOp
-                const ownTarget = availableTargets.find(t => t.type === 'own');
-                if (ownTarget) {
-                  setSelectedTarget(ownTarget);
-                }
-              }}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
-                activeMode === 'mindop'
-                  ? 'bg-gray-900 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span>Mi MindOp</span>
-            </button>
-
-            {/* Grupo de Colaboración con Dropdown integrado */}
-            <div className="relative flex items-center space-x-2" data-target-selector>
-              <button
-                onClick={() => {
-                  setActiveMode('collaborate');
-                  setShowTargetSelector(false);
-                  // Al cambiar a colaboración, mantener el target actual o seleccionar el primero disponible
-                  if (!selectedTarget && availableTargets.length > 0) {
-                    setSelectedTarget(availableTargets[0]);
-                  }
-                }}
-                disabled={loadingConnections}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
-                  activeMode === 'collaborate'
-                    ? 'bg-gray-900 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'
-                }`}
-              >
-                {loadingConnections ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Users className="w-4 h-4" />
-                )}
-                <span>Colaborar</span>
-              </button>
-
-              {/* Botón selector de target (solo visible en modo colaboración) */}
-              {activeMode === 'collaborate' && (
-                <button
-                  onClick={() => setShowTargetSelector(!showTargetSelector)}
-                  className="flex items-center space-x-1 px-3 py-2 bg-blue-50 border border-blue-200 rounded-full hover:bg-blue-100 transition-colors text-xs"
-                  disabled={loadingConnections}
-                >
-                  {selectedTarget?.type === 'connected' ? (
+              {/* Indicador de Target Actual */}
+              {activeMode === 'collaborate' && selectedTarget && (
+                <div className="flex items-center space-x-1.5 px-2 py-1 bg-blue-50 border border-blue-200 rounded-full">
+                  {selectedTarget.type === 'connected' ? (
                     <Users className="w-3 h-3 text-blue-600" />
                   ) : (
                     <User className="w-3 h-3 text-blue-600" />
                   )}
-                  <span className="text-blue-900 font-medium max-w-20 truncate">
-                    {selectedTarget ? selectedTarget.name : 'Seleccionar'}
+                  <span className="text-xs text-blue-900 font-medium max-w-24 truncate">
+                    {selectedTarget.name}
                   </span>
-                  <ChevronDown className="w-3 h-3 text-blue-600" />
-                </button>
-              )}
-
-              {/* Dropdown con targets disponibles */}
-              {showTargetSelector && activeMode === 'collaborate' && (
-                <div className="absolute left-20 bottom-full mb-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                  {availableTargets.map((target) => (
-                    <button
-                      key={target.id}
-                      onClick={() => {
-                        setSelectedTarget(target);
-                        setShowTargetSelector(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
-                        selectedTarget?.id === target.id ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2">
-                        {target.type === 'connected' ? (
-                          <Users className="w-4 h-4 text-blue-600" />
-                        ) : (
-                          <User className="w-4 h-4 text-gray-600" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900 truncate">
-                            {target.name}
-                          </div>
-                          {target.description && (
-                            <div className="text-xs text-gray-500 truncate">
-                              {target.description}
-                            </div>
-                          )}
-                          <div className="text-xs text-gray-400">
-                            {target.type === 'own' ? 'Tu MindOp' : 'Conectado'}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                  
-                  {availableTargets.length === 1 && (
-                    <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                      No tienes MindOps conectados aún
-                    </div>
-                  )}
                 </div>
               )}
             </div>
-            
-            {/* Indicador de conexiones disponibles */}
+
+            {/* Campo de Texto y Botón de Envío */}
+            <div className="flex items-end space-x-2">
+              <div className="flex-1">
+                <textarea
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage(e);
+                    }
+                  }}
+                  placeholder={
+                    activeMode === 'collaborate' && selectedTarget?.type === 'connected'
+                      ? `Colaborar con ${selectedTarget.name}...`
+                      : "Escribe tu consulta aquí..."
+                  }
+                  rows={1}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent resize-none text-sm placeholder-gray-500"
+                  style={{ minHeight: '48px', maxHeight: '120px' }}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isLoading || !inputText.trim()}
+                className="flex items-center justify-center w-10 h-10 bg-gray-900 text-white rounded-full hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <PlaneTakeoff className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+
+            {/* Indicador de Conexiones Disponibles */}
             {!loadingConnections && connectedMindOps.length > 0 && activeMode === 'collaborate' && (
-              <div className="flex items-center px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-full">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2"></div>
-                <span className="text-xs text-emerald-700 font-medium">
-                  {connectedMindOps.length} conectado{connectedMindOps.length !== 1 ? 's' : ''}
-                </span>
+              <div className="flex items-center justify-center pt-1">
+                <div className="flex items-center px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full">
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></div>
+                  <span className="text-xs text-emerald-700 font-medium">
+                    {connectedMindOps.length} MindOp{connectedMindOps.length !== 1 ? 's' : ''} conectado{connectedMindOps.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
               </div>
             )}
-          </div>
-        </div>
+          </form>        </div>
       </div>
     </div>
   );

@@ -221,6 +221,7 @@ serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
+
   try {
     // 🔧 DEBUG: Verificar variables de entorno al inicio
     console.log('🔧 === INICIANDO MINDOP SERVICE ===')
@@ -246,7 +247,9 @@ serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
-    }    // Get authorization header
+    }
+
+    // Get authorization header
     const authHeader = req.headers.get('authorization')
     console.log('🔑 Authorization header presente:', !!authHeader)
     if (!authHeader) {
@@ -257,7 +260,9 @@ serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
-    }    // Parse request body to get user query and optional target_mindop_id
+    }
+
+    // Parse request body to get user query and optional target_mindop_id
     const requestBody = await req.json()
     const userQuery = requestBody.query || requestBody.message
     const targetMindOpId = requestBody.target_mindop_id // Para colaboración dirigida
@@ -292,7 +297,9 @@ serve(async (req: Request) => {
     }
     
     console.log('Initializing Supabase client...')
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)    // Verify the JWT token and get user
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Verify the JWT token and get user
     console.log('Verifying JWT token...')
     const token = authHeader.replace('Bearer ', '')
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
@@ -306,17 +313,43 @@ serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
-    }    const userId = userData.user.id
+    }
+
+    const userId = userData.user.id
     console.log(`Authenticated user: ${userId}`)
 
     let mindop: MindopRecord;
     const isCollaborationRequest = !!targetMindOpId;
 
     if (isCollaborationRequest) {
-      // MODO COLABORACIÓN ASÍNCRONA: Crear tarea en lugar de procesar directamente
-      console.log('🤝 Modo colaboración asíncrona activado...')
+      // MODO COLABORACIÓN: Procesar en tiempo real
+      console.log('🤝 Modo colaboración en tiempo real...')
       
-      // Verificar que existe una conexión aprobada entre el usuario y el MindOp objetivo
+      // Primero obtener el MindOp ID del usuario autenticado
+      const { data: userMindOpData, error: userMindOpError } = await supabaseAdmin
+        .from('mindops')
+        .select('id')
+        .eq('user_id', userId)
+        .single()
+
+      if (userMindOpError || !userMindOpData) {
+        console.error('❌ Error obteniendo MindOp del usuario:', userMindOpError?.message)
+        return new Response(
+          JSON.stringify({ 
+            error: 'No se pudo encontrar tu MindOp. Verifica tu configuración.',
+            code: 'USER_MINDOP_NOT_FOUND'
+          }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      const userMindOpId = userMindOpData.id
+      console.log(`👤 MindOp del usuario: ${userMindOpId}`)
+      
+      // Verificar que existe una conexión aprobada entre el MindOp del usuario y el MindOp objetivo
       const { data: connectionData, error: connectionError } = await supabaseAdmin
         .from('follow_requests')
         .select(`
@@ -329,7 +362,7 @@ serve(async (req: Request) => {
             created_at
           )
         `)
-        .eq('requester_mindop_id', userId) // El usuario autenticado debe ser quien sigue
+        .eq('requester_mindop_id', userMindOpId) // El MindOp del usuario debe ser quien sigue
         .eq('target_mindop_id', targetMindOpId) // Al MindOp objetivo
         .eq('status', 'approved') // La conexión debe estar aprobada
         .single()
@@ -350,65 +383,6 @@ serve(async (req: Request) => {
 
       mindop = connectionData.target_mindop as MindopRecord
       console.log(`✅ Acceso autorizado al MindOp: ${mindop.mindop_name} (${mindop.id})`)
-      
-      // Crear tarea de colaboración en lugar de procesar inmediatamente
-      console.log('📝 Creando tarea de colaboración asíncrona...')
-      const { data: taskData, error: taskError } = await supabaseAdmin
-        .from('mindop_collaboration_tasks')
-        .insert({
-          requester_mindop_id: userId,
-          target_mindop_id: targetMindOpId,
-          query: userQuery,
-          status: 'pending',
-          priority: 'normal',
-          metadata: {
-            source: 'chat_interface',
-            timestamp: new Date().toISOString(),
-            collaboration_type: 'query'
-          }
-        })
-        .select()
-        .single()
-
-      if (taskError) {
-        console.error('❌ Error creando tarea de colaboración:', taskError.message)
-        return new Response(
-          JSON.stringify({ 
-            error: 'Error al crear la tarea de colaboración',
-            details: taskError.message 
-          }),
-          { 
-            status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-
-      console.log(`✅ Tarea de colaboración creada con ID: ${taskData.id}`)
-      
-      // Retornar respuesta inmediata indicando que la tarea se procesará asíncronamente
-      return new Response(
-        JSON.stringify({
-          success: true,
-          collaboration_task: {
-            id: taskData.id,
-            status: 'pending',
-            message: `Tu consulta ha sido enviada al MindOp "${mindop.mindop_name}" y se procesará en breve.`,
-            estimated_processing_time: '30-60 segundos'
-          },
-          mindop: {
-            id: mindop.id,
-            name: mindop.mindop_name,
-            description: mindop.mindop_description
-          },
-          collaboration: true,
-          timestamp: new Date().toISOString()
-        }),
-        { 
-          status: 202, // 202 Accepted - Request received and will be processed
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
       
     } else {
       // MODO LOCAL: Procesar inmediatamente como antes
@@ -443,94 +417,96 @@ serve(async (req: Request) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         )
-      }      mindop = mindopData as MindopRecord
+      }
+
+      mindop = mindopData as MindopRecord
       console.log(`✅ Usando propio MindOp: ${mindop.mindop_name} (${mindop.id})`)
     }
 
-    // Solo procesar directamente si NO es colaboración
-    if (!isCollaborationRequest) {
-      // Generate embedding for user query
-      console.log('Generating embedding for user query:', userQuery);
-      const queryEmbedding = await generateEmbedding(userQuery)
+    // Procesar tanto consultas locales como de colaboración
+    // Generate embedding for user query
+    console.log('Generating embedding for user query:', userQuery);
+    const queryEmbedding = await generateEmbedding(userQuery)
 
-      // Search for relevant chunks in the vector database
-      console.log('Searching for relevant chunks in mindop:', mindop.id);
-      const relevantChunks = await searchRelevantChunks(
-        supabaseAdmin,
-        queryEmbedding,
-        mindop.id,
-        5 // Limit to top 5 most relevant chunks
-      );
+    // Search for relevant chunks in the vector database
+    console.log('Searching for relevant chunks in mindop:', mindop.id);
+    const relevantChunks = await searchRelevantChunks(
+      supabaseAdmin,
+      queryEmbedding,
+      mindop.id,
+      5 // Limit to top 5 most relevant chunks
+    );
 
-      if (relevantChunks.length === 0) {
-        // Generate a helpful response even without specific data context
-        const fallbackResponse = await generateGeminiResponse(
-          userQuery,
-          "No se encontraron datos específicos relacionados con esta consulta en la base de datos del usuario.",
-          mindop.mindop_name,
-          false // No es colaboración
-        )
-        
-        return new Response(
-          JSON.stringify({
-            success: true,
-            response: fallbackResponse,
-            mindop: {
-              id: mindop.id,
-              name: mindop.mindop_name,
-              description: mindop.mindop_description
-            },
-            collaboration: false,
-            chunks_found: 0,
-            timestamp: new Date().toISOString()
-          }),
-          { 
-            status: 200, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-
-      // Build context from relevant chunks
-      const contextParts = relevantChunks.map((chunk, index) => 
-        `Fuente ${index + 1} (${chunk.source_csv_name}, similitud: ${chunk.similarity.toFixed(3)}):\n${chunk.content}`
-      )
-      const relevantContext = contextParts.join('\n\n---\n\n')
-
-      console.log(`Found ${relevantChunks.length} relevant chunks, generating Gemini response`)
-
-      // Generate response using Gemini
-      const geminiResponse = await generateGeminiResponse(
+    if (relevantChunks.length === 0) {
+      // Generate a helpful response even without specific data context
+      const fallbackResponse = await generateGeminiResponse(
         userQuery,
-        relevantContext,
+        "No se encontraron datos específicos relacionados con esta consulta en la base de datos del usuario.",
         mindop.mindop_name,
-        false // No es colaboración
+        isCollaborationRequest // Usar flag de colaboración
       )
-
-      // Return successful response
+      
       return new Response(
         JSON.stringify({
           success: true,
-          response: geminiResponse,
+          response: fallbackResponse,
           mindop: {
             id: mindop.id,
             name: mindop.mindop_name,
             description: mindop.mindop_description
           },
-          collaboration: false,
-          chunks_found: relevantChunks.length,
-          chunks_used: relevantChunks.map(chunk => ({
-            id: chunk.id,
-            similarity: chunk.similarity,
-            source: chunk.source_csv_name
-          })),
+          collaboration: isCollaborationRequest,
+          chunks_found: 0,
           timestamp: new Date().toISOString()
         }),
         { 
           status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-      )    }
+      )
+    }
+
+    // Build context from relevant chunks
+    const contextParts = relevantChunks.map((chunk, index) => 
+      `Fuente ${index + 1} (${chunk.source_csv_name}, similitud: ${chunk.similarity.toFixed(3)}):\n${chunk.content}`
+    )
+    const relevantContext = contextParts.join('\n\n---\n\n')
+
+    console.log(`Found ${relevantChunks.length} relevant chunks, generating Gemini response`)
+
+    // Generate response using Gemini
+    const geminiResponse = await generateGeminiResponse(
+      userQuery,
+      relevantContext,
+      mindop.mindop_name,
+      isCollaborationRequest // Usar flag de colaboración
+    )
+
+    // Return successful response
+    return new Response(
+      JSON.stringify({
+        success: true,
+        response: geminiResponse,
+        mindop: {
+          id: mindop.id,
+          name: mindop.mindop_name,
+          description: mindop.mindop_description
+        },
+        collaboration: isCollaborationRequest,
+        chunks_found: relevantChunks.length,
+        chunks_used: relevantChunks.map(chunk => ({
+          id: chunk.id,
+          similarity: chunk.similarity,
+          source: chunk.source_csv_name
+        })),
+        timestamp: new Date().toISOString()
+      }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    )
+
   } catch (error) {
     console.error('💥 Unexpected error:', error)
     console.error('Error name:', error.name)
