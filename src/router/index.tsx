@@ -1,9 +1,10 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { MainLayout } from '@/components/layout';
 import { AuthPage, ProtectedRoute } from '@/components';
+import AuthDebugger from '@/components/AuthDebugger';
+import ConnectionsDebugger from '@/components/ConnectionsDebugger';
 import { 
   Home, 
-  Dashboard, 
   ChatPage, 
   MyMindOpPage, 
   SearchPage, 
@@ -44,16 +45,7 @@ export const router = createBrowserRouter([
           <ProtectedRoute requireAuth={false}>
             <AuthPage defaultMode="signup" />
           </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'dashboard',
-        element: (
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        ),
-      },
+        ),      },
       {
         path: 'chat',
         element: (
@@ -92,12 +84,22 @@ export const router = createBrowserRouter([
             <ProfilePage />
           </ProtectedRoute>
         ),
-      },
-      {
+      },      {
         path: 'mindop-test',
         element: (
           <ProtectedRoute>
             <MindopServiceTestPage />
+          </ProtectedRoute>
+        ),
+      },      {
+        path: 'auth-debug',
+        element: <AuthDebugger />,
+      },
+      {
+        path: 'connections-debug',
+        element: (
+          <ProtectedRoute>
+            <ConnectionsDebugger />
           </ProtectedRoute>
         ),
       },

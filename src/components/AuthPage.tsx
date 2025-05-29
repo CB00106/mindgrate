@@ -14,10 +14,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultMode = 'login' }) => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<AuthMode>(defaultMode);
-
   // Redirect if user is already authenticated
   if (!loading && user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/chat" replace />;
   }
 
   const handleToggleMode = () => {
@@ -27,15 +26,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultMode = 'login' }) => {
   const handleAuthSuccess = () => {
     // Small delay to allow auth state to update
     setTimeout(() => {
-      navigate('/dashboard');
+      navigate('/chat');
     }, 500);
   };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-300 mx-auto"></div>
           <p className="mt-4 text-gray-600">Cargando...</p>
         </div>
       </div>
@@ -43,39 +41,39 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultMode = 'login' }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         {/* Logo and Brand */}
         <div className="flex justify-center mb-6">
           <div className="flex items-center space-x-3">
-            <div className="bg-primary-600 rounded-lg p-3">
+            <div className="bg-black rounded-xl p-3">
               <span className="text-white font-bold text-2xl">M</span>
             </div>
-            <span className="text-2xl font-bold text-gray-900">MindOps</span>
+            <span className="text-2xl font-semibold text-black">Mindgrate</span>
           </div>
         </div>
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="bg-white py-8 px-4 shadow-sm border border-gray-100 sm:rounded-2xl sm:px-10">
           {/* Tab Navigation */}
-          <div className="flex mb-8 bg-gray-100 rounded-lg p-1">
+          <div className="flex mb-8 bg-gray-50 rounded-xl p-1">
             <button
               onClick={() => setMode('login')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
                 mode === 'login'
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-gray-600 hover:text-black'
               }`}
             >
               Iniciar Sesión
             </button>
             <button
               onClick={() => setMode('signup')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
                 mode === 'signup'
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-gray-600 hover:text-black'
               }`}
             >
               Registrarse
@@ -96,23 +94,21 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultMode = 'login' }) => {
               />
             )}
           </div>
-        </div>
-
-        {/* Additional Links */}
+        </div>        {/* Additional Links */}
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
+              <div className="w-full border-t border-gray-200" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">¿Necesitas ayuda?</span>
+              <span className="px-2 bg-white text-gray-500">¿Necesitas ayuda?</span>
             </div>
           </div>
 
           <div className="mt-6 text-center">
             <a
-              href="mailto:support@mindops.com"
-              className="text-sm text-primary-600 hover:text-primary-500"
+              href="mailto:support@mindgrate.com"
+              className="text-sm text-gray-600 hover:text-black transition-colors"
             >
               Contactar soporte
             </a>
@@ -123,7 +119,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultMode = 'login' }) => {
       {/* Footer */}
       <div className="mt-8 text-center">
         <p className="text-xs text-gray-500">
-          © 2025 MindOps. Todos los derechos reservados.
+          © 2025 Mindgrate. Todos los derechos reservados.
         </p>
       </div>
     </div>

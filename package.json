@@ -14,7 +14,7 @@
     "supabase:functions:logs": "supabase functions logs mindop-service"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
+    "@supabase/supabase-js": "^2.49.8",
     "clsx": "^2.0.0",
     "dotenv": "^16.5.0",
     "form-data": "^4.0.2",

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
+import logoImage from '@/images/imageq1_lay.png';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
@@ -47,28 +48,30 @@ const Navbar: React.FC = () => {
     { path: '/search', label: 'Search' },
     { path: '/notifications', label: 'Follow Request' },
   ];
-
   return (
-    <nav className="bg-white border-b border-gray-200 px-6 py-4">
+    <nav className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
       <div className="flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
-          <Link to="/chat" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">M</span>
-            </div>
-            <span className="text-xl font-bold text-black">Mindgrate</span>
+          <Link to="/chat" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+            <img 
+              src={logoImage} 
+              alt="Logo" 
+              className="h-10 w-auto object-contain"
+            />
           </Link>
-        </div>        {/* Navigation Links */}
+        </div>
+
+        {/* Navigation Links */}
         <div className="flex items-center space-x-8">
           {navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
-              className={`text-sm font-medium transition-colors relative ${
+              className={`text-sm font-medium transition-all duration-200 relative px-3 py-2 rounded-lg ${
                 isActive(link.path)
-                  ? 'text-black border-b-2 border-black pb-1'
-                  : 'text-gray-600 hover:text-black'
+                  ? 'text-black bg-gray-100'
+                  : 'text-gray-600 hover:text-black hover:bg-gray-50'
               }`}
             >
               {link.label}
@@ -84,9 +87,9 @@ const Navbar: React.FC = () => {
           {/* Notification Bell Icon - Alternative placement */}
           <Link
             to="/notifications"
-            className={`relative p-2 rounded-full transition-colors ${
+            className={`relative p-2 rounded-xl transition-all duration-200 ${
               isActive('/notifications') 
-                ? 'bg-black text-white' 
+                ? 'bg-black text-white shadow-sm' 
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
             title="Notificaciones"

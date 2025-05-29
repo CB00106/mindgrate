@@ -32,6 +32,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
     success: null
   });
 
+  const [showClearSessionOption, setShowClearSessionOption] = useState(false);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -43,9 +45,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
     if (state.error) {
       setState(prev => ({ ...prev, error: null }));
     }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  };  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.email || !formData.password) {
@@ -59,10 +59,24 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
       const { error } = await signIn(formData.email, formData.password);
       
       if (error) {
+        let errorMessage = 'Error al iniciar sesión';
+        
+        // Handle specific error types
+        if (error.message?.includes('Invalid login credentials')) {
+          errorMessage = 'Credenciales incorrectas. Verifica tu email y contraseña.';
+        } else if (error.message?.includes('Email not confirmed')) {
+          errorMessage = 'Por favor confirma tu email antes de iniciar sesión.';
+        } else if (error.message?.includes('refresh_token_not_found') || error.message?.includes('Invalid Refresh Token')) {
+          errorMessage = 'Sesión expirada. Intenta nuevamente.';
+          setShowClearSessionOption(true);
+        } else {
+          errorMessage = error.message || 'Error al iniciar sesión';
+        }
+        
         setState(prev => ({ 
           ...prev, 
           loading: false, 
-          error: error.message || 'Error al iniciar sesión' 
+          error: errorMessage
         }));
       } else {
         setState(prev => ({ 
@@ -70,28 +84,68 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
           loading: false, 
           success: 'Inicio de sesión exitoso' 
         }));
+        setShowClearSessionOption(false);
         onSuccess?.();
       }
     } catch (err) {
+      console.error('Login error:', err);
       setState(prev => ({ 
         ...prev, 
         loading: false, 
-        error: 'Error inesperado. Inténtalo de nuevo.' 
+        error: 'Error inesperado. Por favor intenta nuevamente.' 
       }));
     }
   };
 
+  const handleClearSession = async () => {
+    try {
+      // Clear localStorage items related to Supabase
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('supabase.auth.refreshToken');
+      
+      // Clear all localStorage items that start with 'sb-'
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Clear sessionStorage as well
+      sessionStorage.clear();
+      
+      setState(prev => ({ 
+        ...prev, 
+        error: null, 
+        success: 'Sesión limpiada. Intenta iniciar sesión nuevamente.' 
+      }));
+      setShowClearSessionOption(false);
+      
+      // Reload the page to ensure clean state
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error('Error clearing session:', error);
+      setState(prev => ({ 
+        ...prev, 
+        error: 'Error al limpiar la sesión' 
+      }));
+    }
+  };
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Iniciar Sesión</h2>
-        <p className="mt-2 text-gray-600">Accede a tu cuenta de MindOps</p>
+        <h2 className="text-3xl font-semibold text-black">Iniciar Sesión</h2>
+        <p className="mt-2 text-gray-600">Accede a tu cuenta</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Email Field */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
             Correo Electrónico
           </label>
           <input
@@ -103,14 +157,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
             value={formData.email}
             onChange={handleChange}
             disabled={state.loading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed transition-all duration-200"
             placeholder="tu@email.com"
           />
         </div>
 
         {/* Password Field */}
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
             Contraseña
           </label>
           <input
@@ -122,22 +176,29 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
             value={formData.password}
             onChange={handleChange}
             disabled={state.loading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed transition-all duration-200"
             placeholder="••••••••"
           />
-        </div>
-
-        {/* Error Message */}
+        </div>        {/* Error Message */}
         {state.error && (
-          <div className="rounded-md bg-red-50 p-4">
+          <div className="rounded-xl bg-red-50 border border-red-100 p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-800">{state.error}</p>
+                {showClearSessionOption && (
+                  <button
+                    type="button"
+                    onClick={handleClearSession}
+                    className="mt-2 text-sm text-red-600 hover:text-red-700 underline transition-colors"
+                  >
+                    Limpiar datos de sesión y reintentar
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -145,10 +206,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
 
         {/* Success Message */}
         {state.success && (
-          <div className="rounded-md bg-green-50 p-4">
+          <div className="rounded-xl bg-green-50 border border-green-100 p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               </div>
@@ -177,13 +238,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
           ) : (
             'Iniciar Sesión'
           )}
-        </Button>
-
-        {/* Forgot Password Link */}
+        </Button>        {/* Forgot Password Link */}
         <div className="text-center">
           <a 
             href="#" 
-            className="text-sm text-primary-600 hover:text-primary-500 font-medium"
+            className="text-sm text-gray-600 hover:text-black font-medium transition-colors"
           >
             ¿Olvidaste tu contraseña?
           </a>
@@ -197,7 +256,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
               <button
                 type="button"
                 onClick={onToggleMode}
-                className="font-medium text-primary-600 hover:text-primary-500"
+                className="font-medium text-black hover:text-gray-700 transition-colors"
               >
                 Registrarse
               </button>

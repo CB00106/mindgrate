@@ -12,8 +12,7 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  try {
-    const supabaseClient = createClient(
+  try {    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
@@ -25,9 +24,7 @@ serve(async (req) => {
 
     const { pathname } = new URL(req.url)
     
-    if (pathname.endsWith('/dashboard')) {
-      return await getDashboardStats(req, supabaseClient)
-    } else if (pathname.endsWith('/search-analytics')) {
+    if (pathname.endsWith('/search-analytics')) {
       return await getSearchAnalytics(req, supabaseClient)
     } else if (pathname.endsWith('/performance')) {
       return await getPerformanceStats(req, supabaseClient)
@@ -57,97 +54,6 @@ serve(async (req) => {
     )
   }
 })
-
-async function getDashboardStats(req: Request, supabaseClient: any) {
-  try {
-    // Get user summary from the vector database function
-    const { data: summary, error: summaryError } = await supabaseClient
-      .rpc('vectors.get_user_summary')
-
-    if (summaryError) {
-      throw new Error(`Get user summary error: ${summaryError.message}`)
-    }
-
-    // Get recent activity
-    const { data: recentDocuments, error: recentError } = await supabaseClient
-      .from('vectors.documents')
-      .select('id, title, created_at, content_type')
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    if (recentError) {
-      throw new Error(`Get recent documents error: ${recentError.message}`)
-    }
-
-    // Get recent searches
-    const { data: recentSearches, error: searchError } = await supabaseClient
-      .from('vectors.search_sessions')
-      .select('query, results_count, created_at')
-      .order('created_at', { ascending: false })
-      .limit(10)
-
-    if (searchError) {
-      throw new Error(`Get recent searches error: ${searchError.message}`)
-    }
-
-    // Get collection stats
-    const { data: collections, error: collectionError } = await supabaseClient
-      .from('vectors.collections')
-      .select(`
-        id, 
-        name,
-        created_at,
-        document_count:vectors.document_collections(count)
-      `)
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    if (collectionError) {
-      throw new Error(`Get collections error: ${collectionError.message}`)
-    }
-
-    const userStats = summary?.[0] || {
-      total_documents: 0,
-      total_embeddings: 0,
-      total_collections: 0,
-      avg_chunks_per_document: 0,
-      latest_document_date: null
-    }
-
-    const transformedCollections = collections?.map(collection => ({
-      ...collection,
-      document_count: collection.document_count?.[0]?.count || 0
-    })) || []
-
-    return new Response(
-      JSON.stringify({
-        summary: userStats,
-        recentActivity: {
-          documents: recentDocuments || [],
-          searches: recentSearches || [],
-          collections: transformedCollections
-        },
-        metrics: {
-          searchSuccessRate: calculateSearchSuccessRate(recentSearches || []),
-          avgResultsPerSearch: calculateAvgResults(recentSearches || []),
-          documentsThisWeek: countRecentDocuments(recentDocuments || []),
-        }
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    )
-  } catch (error) {
-    console.error('Get dashboard stats error:', error)
-    return new Response(
-      JSON.stringify({ error: 'Failed to get dashboard stats', details: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    )
-  }
-}
 
 async function getSearchAnalytics(req: Request, supabaseClient: any) {
   const url = new URL(req.url)

@@ -115,19 +115,18 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
       }));
     }
   };
-
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Crear Cuenta</h2>
-        <p className="mt-2 text-gray-600">Únete a MindOps hoy mismo</p>
+        <h2 className="text-3xl font-semibold text-black">Crear Cuenta</h2>
+        <p className="mt-2 text-gray-600">Únete a nosotros</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Name Fields */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="firstName" className="block text-sm font-medium text-gray-900 mb-2">
               Nombre
             </label>
             <input
@@ -139,12 +138,12 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
               value={formData.firstName}
               onChange={handleChange}
               disabled={state.loading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed transition-all duration-200"
               placeholder="Juan"
             />
           </div>
           <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="lastName" className="block text-sm font-medium text-gray-900 mb-2">
               Apellido
             </label>
             <input
@@ -156,7 +155,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
               value={formData.lastName}
               onChange={handleChange}
               disabled={state.loading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed transition-all duration-200"
               placeholder="Pérez"
             />
           </div>
@@ -164,7 +163,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
 
         {/* Email Field */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
             Correo Electrónico
           </label>
           <input
@@ -176,14 +175,14 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
             value={formData.email}
             onChange={handleChange}
             disabled={state.loading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed transition-all duration-200"
             placeholder="tu@email.com"
           />
         </div>
 
         {/* Password Field */}
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
             Contraseña
           </label>
           <input
@@ -195,7 +194,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
             value={formData.password}
             onChange={handleChange}
             disabled={state.loading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed transition-all duration-200"
             placeholder="••••••••"
           />
           <p className="mt-1 text-sm text-gray-500">Mínimo 6 caracteres</p>
@@ -203,7 +202,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
 
         {/* Confirm Password Field */}
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-900 mb-2">
             Confirmar Contraseña
           </label>
           <input
@@ -215,17 +214,15 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
             value={formData.confirmPassword}
             onChange={handleChange}
             disabled={state.loading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed transition-all duration-200"
             placeholder="••••••••"
           />
-        </div>
-
-        {/* Error Message */}
+        </div>        {/* Error Message */}
         {state.error && (
-          <div className="rounded-md bg-red-50 p-4">
+          <div className="rounded-xl bg-red-50 border border-red-100 p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
@@ -238,10 +235,10 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
 
         {/* Success Message */}
         {state.success && (
-          <div className="rounded-md bg-green-50 p-4">
+          <div className="rounded-xl bg-green-50 border border-green-100 p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               </div>
@@ -270,17 +267,15 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
           ) : (
             'Crear Cuenta'
           )}
-        </Button>
-
-        {/* Terms and Privacy */}
+        </Button>        {/* Terms and Privacy */}
         <div className="text-center">
           <p className="text-xs text-gray-500">
             Al registrarte, aceptas nuestros{' '}
-            <a href="#" className="text-primary-600 hover:text-primary-500">
+            <a href="#" className="text-gray-600 hover:text-black transition-colors">
               Términos de Servicio
             </a>{' '}
             y{' '}
-            <a href="#" className="text-primary-600 hover:text-primary-500">
+            <a href="#" className="text-gray-600 hover:text-black transition-colors">
               Política de Privacidad
             </a>
           </p>
@@ -294,7 +289,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleMode, onSuccess }) => {
               <button
                 type="button"
                 onClick={onToggleMode}
-                className="font-medium text-primary-600 hover:text-primary-500"
+                className="font-medium text-black hover:text-gray-700 transition-colors"
               >
                 Iniciar Sesión
               </button>

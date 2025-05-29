@@ -269,6 +269,170 @@ class NotificationService {
       return 0;
     }
   }
+
+  /**
+   * Obtiene los MindOps que el usuario actual está siguiendo
+   */
+  async getFollowingMindOps(userMindOpId: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('follow_requests')
+        .select(`
+          id,
+          target_mindop_id,
+          created_at,
+          target_mindop:mindops!follow_requests_target_mindop_id_fkey (
+            id,
+            mindop_name,
+            mindop_description,
+            user_id
+          )
+        `)
+        .eq('requester_mindop_id', userMindOpId)
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching following mindops:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getFollowingMindOps:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene los MindOps que siguen al usuario actual
+   */
+  async getFollowerMindOps(userMindOpId: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('follow_requests')
+        .select(`
+          id,
+          requester_mindop_id,
+          created_at,
+          requester_mindop:mindops!follow_requests_requester_mindop_id_fkey (
+            id,
+            mindop_name,
+            mindop_description,
+            user_id
+          )
+        `)
+        .eq('target_mindop_id', userMindOpId)
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching follower mindops:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getFollowerMindOps:', error);
+      return [];
+    }
+  }
+  /**
+   * Revoca un seguimiento (dejar de seguir a un MindOp)
+   */
+  async unfollowMindOp(userMindOpId: string, targetMindOpId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔄 Iniciando unfollowMindOp:', { userMindOpId, targetMindOpId });
+      
+      // Verificar que existe la conexión antes de eliminar
+      const { data: existingConnections, error: checkError } = await supabase
+        .from('follow_requests')
+        .select('*')
+        .eq('requester_mindop_id', userMindOpId)
+        .eq('target_mindop_id', targetMindOpId)
+        .eq('status', 'approved');
+
+      if (checkError) {
+        console.error('❌ Error verificando conexión existente:', checkError);
+        return { success: false, error: checkError.message };
+      }
+
+      console.log('📋 Conexiones encontradas:', existingConnections);
+
+      if (!existingConnections || existingConnections.length === 0) {
+        console.warn('⚠️ No se encontró conexión aprobada para eliminar');
+        return { success: false, error: 'No se encontró una conexión activa para dejar de seguir' };
+      }
+
+      // Realizar la eliminación
+      const { data: deleteResult, error } = await supabase
+        .from('follow_requests')
+        .delete()
+        .eq('requester_mindop_id', userMindOpId)
+        .eq('target_mindop_id', targetMindOpId)
+        .eq('status', 'approved')
+        .select();
+
+      if (error) {
+        console.error('❌ Error eliminando conexión:', error);
+        return { success: false, error: error.message };
+      }
+
+      console.log('✅ Conexión eliminada exitosamente:', deleteResult);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error inesperado en unfollowMindOp:', error);
+      return { success: false, error: 'Error interno del servidor' };
+    }
+  }
+  /**
+   * Remueve un seguidor (revocar el seguimiento de un MindOp hacia el usuario)
+   */
+  async removeFollower(userMindOpId: string, followerMindOpId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔄 Iniciando removeFollower:', { userMindOpId, followerMindOpId });
+      
+      // Verificar que existe la conexión antes de eliminar
+      const { data: existingConnections, error: checkError } = await supabase
+        .from('follow_requests')
+        .select('*')
+        .eq('requester_mindop_id', followerMindOpId)
+        .eq('target_mindop_id', userMindOpId)
+        .eq('status', 'approved');
+
+      if (checkError) {
+        console.error('❌ Error verificando conexión existente:', checkError);
+        return { success: false, error: checkError.message };
+      }
+
+      console.log('📋 Conexiones encontradas:', existingConnections);
+
+      if (!existingConnections || existingConnections.length === 0) {
+        console.warn('⚠️ No se encontró conexión aprobada para eliminar');
+        return { success: false, error: 'No se encontró una conexión activa del seguidor' };
+      }
+
+      // Realizar la eliminación
+      const { data: deleteResult, error } = await supabase
+        .from('follow_requests')
+        .delete()
+        .eq('requester_mindop_id', followerMindOpId)
+        .eq('target_mindop_id', userMindOpId)
+        .eq('status', 'approved')
+        .select();
+
+      if (error) {
+        console.error('❌ Error eliminando conexión:', error);
+        return { success: false, error: error.message };
+      }
+
+      console.log('✅ Seguidor removido exitosamente:', deleteResult);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error inesperado en removeFollower:', error);
+      return { success: false, error: 'Error interno del servidor' };
+    }
+  }
 }
 
 export const notificationService = new NotificationService();

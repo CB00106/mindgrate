@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Loader2, AlertCircle, Bell, UserPlus, RefreshCw, Clock } from 'lucide-react';
+import { Check, X, Loader2, AlertCircle, Bell, UserPlus, RefreshCw, Clock, UserMinus, Users, Heart } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService, ProcessedNotification } from '@/services/notificationService';
 
@@ -13,19 +13,33 @@ interface ActionError {
 
 const NotificationsPage: React.FC = () => {
   const { userMindOpId } = useAuth();
-  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'follow_requests'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'follow_requests' | 'connections'>('all');
   const [notifications, setNotifications] = useState<ProcessedNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionStates, setActionStates] = useState<ActionState>({});
   const [actionErrors, setActionErrors] = useState<ActionError>({});
-
+  
+  // Estados para la gestión de conexiones
+  const [connectionsTab, setConnectionsTab] = useState<'following' | 'followers'>('following');
+  const [following, setFollowing] = useState<any[]>([]);
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [connectionsLoading, setConnectionsLoading] = useState(false);
+  const [connectionActionStates, setConnectionActionStates] = useState<ActionState>({});
+  const [connectionActionErrors, setConnectionActionErrors] = useState<ActionError>({});
   // Cargar notificaciones al montar el componente
   useEffect(() => {
     if (userMindOpId) {
       loadNotifications();
     }
   }, [userMindOpId]);
+
+  // Cargar conexiones cuando se cambia al tab de conexiones
+  useEffect(() => {
+    if (userMindOpId && activeTab === 'connections') {
+      loadConnections();
+    }
+  }, [userMindOpId, activeTab]);
 
   const loadNotifications = async () => {
     if (!userMindOpId) {
@@ -44,6 +58,26 @@ const NotificationsPage: React.FC = () => {
       setError('Error al cargar las notificaciones');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadConnections = async () => {
+    if (!userMindOpId) return;
+
+    try {
+      setConnectionsLoading(true);
+      const [followingData, followersData] = await Promise.all([
+        notificationService.getFollowingMindOps(userMindOpId),
+        notificationService.getFollowerMindOps(userMindOpId)
+      ]);
+      
+      setFollowing(followingData);
+      setFollowers(followersData);
+    } catch (error) {
+      console.error('Error loading connections:', error);
+      setError('Error al cargar las conexiones');
+    } finally {
+      setConnectionsLoading(false);
     }
   };
 
@@ -109,7 +143,6 @@ const NotificationsPage: React.FC = () => {
       }));
     }
   };
-
   const handleRejectRequest = async (notificationId: string, followRequestId: string) => {
     setActionStates(prev => ({ ...prev, [notificationId]: 'loading' }));
     setActionErrors(prev => ({ ...prev, [notificationId]: '' }));
@@ -141,6 +174,98 @@ const NotificationsPage: React.FC = () => {
         [notificationId]: 'Error interno al procesar la solicitud' 
       }));
     }
+  };  const handleUnfollowMindOp = async (targetMindOpId: string) => {
+    if (!userMindOpId) {
+      console.warn('⚠️ handleUnfollowMindOp: userMindOpId no disponible');
+      return;
+    }
+
+    const actionKey = `unfollow-${targetMindOpId}`;
+    console.log('🔄 Iniciando handleUnfollowMindOp:', { userMindOpId, targetMindOpId, actionKey });
+    
+    setConnectionActionStates(prev => ({ ...prev, [actionKey]: 'loading' }));
+    setConnectionActionErrors(prev => ({ ...prev, [actionKey]: '' }));
+
+    try {
+      const result = await notificationService.unfollowMindOp(userMindOpId, targetMindOpId);
+      console.log('📤 Resultado de unfollowMindOp:', result);
+      
+      if (result.success) {
+        console.log('✅ Unfollow exitoso, actualizando UI');
+        setConnectionActionStates(prev => ({ ...prev, [actionKey]: 'success' }));
+        
+        // Remover de la lista de following
+        setFollowing(prev => {
+          const filtered = prev.filter(f => f.target_mindop.id !== targetMindOpId);
+          console.log('📋 Lista following actualizada:', { antes: prev.length, después: filtered.length });
+          return filtered;
+        });
+        
+        setTimeout(() => {
+          setConnectionActionStates(prev => ({ ...prev, [actionKey]: 'idle' }));
+        }, 2000);
+      } else {
+        console.error('❌ Unfollow falló:', result.error);
+        setConnectionActionStates(prev => ({ ...prev, [actionKey]: 'error' }));
+        setConnectionActionErrors(prev => ({ 
+          ...prev, 
+          [actionKey]: result.error || 'Error al dejar de seguir' 
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Error inesperado en handleUnfollowMindOp:', error);
+      setConnectionActionStates(prev => ({ ...prev, [actionKey]: 'error' }));
+      setConnectionActionErrors(prev => ({ 
+        ...prev, 
+        [actionKey]: 'Error interno al procesar la solicitud' 
+      }));
+    }
+  };
+  const handleRemoveFollower = async (followerMindOpId: string) => {
+    if (!userMindOpId) {
+      console.warn('⚠️ handleRemoveFollower: userMindOpId no disponible');
+      return;
+    }
+
+    const actionKey = `remove-${followerMindOpId}`;
+    console.log('🔄 Iniciando handleRemoveFollower:', { userMindOpId, followerMindOpId, actionKey });
+    
+    setConnectionActionStates(prev => ({ ...prev, [actionKey]: 'loading' }));
+    setConnectionActionErrors(prev => ({ ...prev, [actionKey]: '' }));
+
+    try {
+      const result = await notificationService.removeFollower(userMindOpId, followerMindOpId);
+      console.log('📤 Resultado de removeFollower:', result);
+      
+      if (result.success) {
+        console.log('✅ Remove follower exitoso, actualizando UI');
+        setConnectionActionStates(prev => ({ ...prev, [actionKey]: 'success' }));
+        
+        // Remover de la lista de followers
+        setFollowers(prev => {
+          const filtered = prev.filter(f => f.requester_mindop.id !== followerMindOpId);
+          console.log('📋 Lista followers actualizada:', { antes: prev.length, después: filtered.length });
+          return filtered;
+        });
+        
+        setTimeout(() => {
+          setConnectionActionStates(prev => ({ ...prev, [actionKey]: 'idle' }));
+        }, 2000);
+      } else {
+        console.error('❌ Remove follower falló:', result.error);
+        setConnectionActionStates(prev => ({ ...prev, [actionKey]: 'error' }));
+        setConnectionActionErrors(prev => ({ 
+          ...prev, 
+          [actionKey]: result.error || 'Error al remover seguidor' 
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Error inesperado en handleRemoveFollower:', error);
+      setConnectionActionStates(prev => ({ ...prev, [actionKey]: 'error' }));
+      setConnectionActionErrors(prev => ({
+        ...prev, 
+        [actionKey]: 'Error interno al procesar la solicitud' 
+      }));    }
   };
 
   const getNotificationIcon = (type: string) => {
@@ -297,11 +422,11 @@ const NotificationsPage: React.FC = () => {
           {/* Tabs */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="border-b border-gray-200">
-              <nav className="flex">
-                {[
+              <nav className="flex">                {[
                   { key: 'all', label: 'Todas', count: notifications.length },
                   { key: 'unread', label: 'No leídas', count: unreadCount },
-                  { key: 'follow_requests', label: 'Solicitudes', count: followRequestsCount }
+                  { key: 'follow_requests', label: 'Solicitudes', count: followRequestsCount },
+                  { key: 'connections', label: 'Mis Conexiones', count: following.length + followers.length }
                 ].map((tab) => (
                   <button
                     key={tab.key}
@@ -311,22 +436,226 @@ const NotificationsPage: React.FC = () => {
                         ? 'border-black text-black'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
-                  >
-                    {tab.label}
-                    {tab.count > 0 && (
+                  >                    {tab.label}
+                    {tab.count > 0 && tab.key !== 'connections' && (
                       <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
                         activeTab === tab.key ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
                       }`}>
                         {tab.count}
                       </span>
                     )}
+                    {tab.key === 'connections' && (following.length + followers.length) > 0 && (
+                      <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                        activeTab === tab.key ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {following.length + followers.length}
+                      </span>
+                    )}
                   </button>
                 ))}
               </nav>
-            </div>
+            </div>            {/* Lista de notificaciones */}
+            {activeTab === 'connections' ? (
+              /* Sección de Mis Conexiones */
+              <div>
+                {/* Sub-navegación para conexiones */}
+                <div className="border-b border-gray-200 px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <nav className="flex space-x-6">
+                      <button
+                        onClick={() => setConnectionsTab('following')}
+                        className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                          connectionsTab === 'following'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Heart className="w-4 h-4" />
+                          <span>Siguiendo ({following.length})</span>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setConnectionsTab('followers')}
+                        className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                          connectionsTab === 'followers'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Users className="w-4 h-4" />
+                          <span>Seguidores ({followers.length})</span>
+                        </div>
+                      </button>
+                    </nav>
+                    
+                    <button
+                      onClick={loadConnections}
+                      disabled={connectionsLoading}
+                      className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center space-x-1"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${connectionsLoading ? 'animate-spin' : ''}`} />
+                      <span>Actualizar</span>
+                    </button>
+                  </div>
+                </div>
 
-            {/* Lista de notificaciones */}
-            <div className="divide-y divide-gray-200">
+                {/* Estado de carga de conexiones */}
+                {connectionsLoading && (
+                  <div className="p-8 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3 text-gray-400" />
+                    <p className="text-gray-600">Cargando conexiones...</p>
+                  </div>
+                )}
+
+                {/* Lista de conexiones */}
+                {!connectionsLoading && (
+                  <div className="divide-y divide-gray-200">
+                    {connectionsTab === 'following' && (
+                      <>
+                        {following.length === 0 ? (
+                          <div className="p-8 text-center">
+                            <div className="text-6xl mb-4">💙</div>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                              No sigues a nadie aún
+                            </h3>
+                            <p className="text-gray-600 mb-4">
+                              Busca MindOps interesantes para seguir y comenzar a colaborar
+                            </p>
+                            <a
+                              href="/search"
+                              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                              <Heart className="w-4 h-4 mr-2" />
+                              Buscar MindOps
+                            </a>
+                          </div>
+                        ) : (
+                          following.map((connection) => {
+                            const mindOp = connection.target_mindop;
+                            const actionKey = `unfollow-${mindOp.id}`;
+                            const actionState = connectionActionStates[actionKey] || 'idle';
+                            const actionError = connectionActionErrors[actionKey];
+
+                            return (
+                              <div key={connection.id} className="p-6 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-3 mb-2">
+                                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <Heart className="w-5 h-5 text-blue-600" />
+                                      </div>
+                                      <div>
+                                        <h4 className="font-medium text-gray-900">{mindOp.mindop_name}</h4>
+                                        <p className="text-sm text-gray-500">
+                                          Siguiendo desde {new Date(connection.created_at).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 ml-13">
+                                      {mindOp.mindop_description || 'Sin descripción disponible'}
+                                    </p>
+                                    
+                                    {actionError && (
+                                      <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded ml-13">
+                                        {actionError}
+                                      </div>
+                                    )}
+                                  </div>
+                                    <button
+                                    onClick={() => handleUnfollowMindOp(mindOp.id)}
+                                    disabled={actionState === 'loading'}
+                                    className="px-3 py-1.5 bg-red-50 text-red-600 text-sm rounded-md hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center space-x-2 border border-red-200"
+                                  >
+                                    {actionState === 'loading' ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <UserMinus className="w-4 h-4" />
+                                    )}
+                                    <span>
+                                      {actionState === 'loading' ? 'Procesando...' : 'Dejar de seguir'}
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </>
+                    )}
+
+                    {connectionsTab === 'followers' && (
+                      <>
+                        {followers.length === 0 ? (
+                          <div className="p-8 text-center">
+                            <div className="text-6xl mb-4">👥</div>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                              No tienes seguidores aún
+                            </h3>
+                            <p className="text-gray-600">
+                              Comparte tu MindOp para que otros puedan seguirte y colaborar contigo
+                            </p>
+                          </div>
+                        ) : (
+                          followers.map((connection) => {
+                            const mindOp = connection.requester_mindop;
+                            const actionKey = `remove-${mindOp.id}`;
+                            const actionState = connectionActionStates[actionKey] || 'idle';
+                            const actionError = connectionActionErrors[actionKey];
+
+                            return (
+                              <div key={connection.id} className="p-6 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-3 mb-2">
+                                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                        <Users className="w-5 h-5 text-green-600" />
+                                      </div>
+                                      <div>
+                                        <h4 className="font-medium text-gray-900">{mindOp.mindop_name}</h4>
+                                        <p className="text-sm text-gray-500">
+                                          Te sigue desde {new Date(connection.created_at).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 ml-13">
+                                      {mindOp.mindop_description || 'Sin descripción disponible'}
+                                    </p>
+                                    
+                                    {actionError && (
+                                      <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded ml-13">
+                                        {actionError}
+                                      </div>
+                                    )}
+                                  </div>
+                                    <button
+                                    onClick={() => handleRemoveFollower(mindOp.id)}
+                                    disabled={actionState === 'loading'}
+                                    className="px-3 py-1.5 bg-red-50 text-red-600 text-sm rounded-md hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center space-x-2 border border-red-200"
+                                  >
+                                    {actionState === 'loading' ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <UserMinus className="w-4 h-4" />
+                                    )}
+                                    <span>
+                                      {actionState === 'loading' ? 'Procesando...' : 'Remover seguidor'}
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Sección de notificaciones existente */
+              <div className="divide-y divide-gray-200">
               {filteredNotifications.length === 0 ? (
                 <div className="p-8 text-center">
                   <div className="text-6xl mb-4">🔔</div>
@@ -434,11 +763,11 @@ const NotificationsPage: React.FC = () => {
                           )}
                         </div>
                       </div>
-                    </div>
-                  );
+                    </div>                  );
                 })
               )}
             </div>
+            )}
           </div>
         </>
       )}

@@ -59,67 +59,142 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (user?.id) {
       await fetchUserMindOpId(user.id);
     }
-  };
-  useEffect(() => {
-    // Get initial session
+  };  useEffect(() => {
+    // Get initial session with error handling
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      // Fetch user's MindOp ID if user is authenticated
-      if (session?.user?.id) {
-        await fetchUserMindOpId(session.user.id);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          // Clear corrupted session data
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setUserMindOpId(null);
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          // Fetch user's MindOp ID if user is authenticated
+          if (session?.user?.id) {
+            await fetchUserMindOpId(session.user.id);
+          }
+        }
+      } catch (error) {
+        console.error('Unexpected error during session initialization:', error);
+        // Clear all auth data in case of unexpected errors
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setUserMindOpId(null);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     getInitialSession();
 
-    // Listen for auth changes
+    // Listen for auth changes with improved error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      async (event, session) => {
+        console.log('Auth state change:', event, session ? 'session exists' : 'no session');
         
-        // Fetch user's MindOp ID if user is authenticated
-        if (session?.user?.id) {
-          await fetchUserMindOpId(session.user.id);
-        } else {
+        try {
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          // Handle different auth events
+          if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !session) {
+            setUserMindOpId(null);
+          } else if (session?.user?.id) {
+            await fetchUserMindOpId(session.user.id);
+          } else {
+            setUserMindOpId(null);
+          }
+        } catch (error) {
+          console.error('Error during auth state change:', error);
+          // If there's an error, ensure we're logged out
+          setSession(null);
+          setUser(null);
           setUserMindOpId(null);
+        } finally {
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
     return () => subscription.unsubscribe();
   }, []);
-
   const signIn = async (email: string, password: string) => {
-    setLoading(true);
-    const result = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    setLoading(false);
-    return result;
+    try {
+      setLoading(true);
+      
+      // Clear any existing corrupted session first
+      await supabase.auth.signOut();
+      
+      const result = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (result.error) {
+        console.error('Sign in error:', result.error);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Unexpected sign in error:', error);
+      return { 
+        data: { user: null, session: null }, 
+        error: { message: 'Error inesperado durante el inicio de sesión' } as any 
+      };
+    } finally {
+      setLoading(false);
+    }
   };
+
   const signUp = async (email: string, password: string, options?: SignUpOptions) => {
-    setLoading(true);
-    const result = await supabase.auth.signUp({
-      email,
-      password,
-      options,
-    });
-    setLoading(false);
-    return result;
-  };  const signOut = async () => {
-    setLoading(true);
-    const result = await supabase.auth.signOut();
-    setLoading(false);
-    return result;
+    try {
+      setLoading(true);
+      const result = await supabase.auth.signUp({
+        email,
+        password,
+        options,
+      });
+      return result;
+    } catch (error) {
+      console.error('Unexpected sign up error:', error);
+      return { 
+        data: { user: null, session: null }, 
+        error: { message: 'Error inesperado durante el registro' } as any 
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      setLoading(true);
+      
+      // Clear local state first
+      setSession(null);
+      setUser(null);
+      setUserMindOpId(null);
+      
+      const result = await supabase.auth.signOut();
+      return result;
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Even if signOut fails, ensure local state is cleared
+      setSession(null);
+      setUser(null);
+      setUserMindOpId(null);
+      return { error: null };
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateProfile = async (updates: Record<string, unknown>) => {
