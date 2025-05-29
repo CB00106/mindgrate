@@ -25,6 +25,27 @@ interface OpenAIEmbeddingResponse {
   }[]
 }
 
+interface CollaborationTask {
+  id: string
+  requester_mindop_id: string
+  target_mindop_id: string
+  query: string
+  status: 'pending' | 'processing_by_target' | 'target_processing_complete' | 'completed' | 'failed'
+  response?: string
+  created_at: string
+  updated_at: string
+  requester_mindop?: {
+    id: string
+    mindop_name: string
+    user_id: string
+  }
+  target_mindop?: {
+    id: string
+    mindop_name: string
+    user_id: string
+  }
+}
+
 // Generate embedding using OpenAI API
 async function generateEmbedding(text: string): Promise<number[]> {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
@@ -216,6 +237,225 @@ RESPUESTA (mantén un tono cordial y profesional):`
   }
 }
 
+// Process collaboration task
+async function processCollaborationTask(
+  supabaseClient: any,
+  collaborationTaskId: string,
+  userId: string
+): Promise<Response> {
+  console.log(`🔄 Procesando tarea de colaboración: ${collaborationTaskId}`)
+  
+  // 1. Leer la tarea de colaboración
+  const { data: taskData, error: taskError } = await supabaseClient
+    .from('mindop_collaboration_tasks')
+    .select(`
+      id,
+      requester_mindop_id,
+      target_mindop_id,
+      query,
+      status,
+      created_at,
+      requester_mindop:requester_mindop_id (
+        id,
+        mindop_name,
+        user_id
+      ),
+      target_mindop:target_mindop_id (
+        id,
+        mindop_name,
+        mindop_description,
+        user_id
+      )
+    `)
+    .eq('id', collaborationTaskId)
+    .single()
+
+  if (taskError || !taskData) {
+    console.error('❌ Error obteniendo tarea de colaboración:', taskError?.message)
+    return new Response(
+      JSON.stringify({ 
+        error: 'Tarea de colaboración no encontrada',
+        code: 'COLLABORATION_TASK_NOT_FOUND'
+      }),
+      { 
+        status: 404, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+
+  const task: CollaborationTask = taskData as CollaborationTask
+  console.log(`📋 Tarea encontrada: ${task.query}`)
+
+  // 2. Validar autorización - el usuario debe ser el propietario del MindOp objetivo
+  if (task.target_mindop?.user_id !== userId) {
+    console.error('❌ Usuario no autorizado para procesar esta tarea')
+    return new Response(
+      JSON.stringify({ 
+        error: 'No tienes autorización para procesar esta tarea',
+        code: 'UNAUTHORIZED_TASK_ACCESS'
+      }),
+      { 
+        status: 403, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+
+  // 3. Verificar que la tarea esté en estado 'pending'
+  if (task.status !== 'pending') {
+    console.error(`❌ Tarea en estado incorrecto: ${task.status}`)
+    return new Response(
+      JSON.stringify({ 
+        error: `La tarea no puede ser procesada. Estado actual: ${task.status}`,
+        code: 'INVALID_TASK_STATUS'
+      }),
+      { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+
+  // 4. Actualizar estado a 'processing_by_target'
+  const { error: updateError1 } = await supabaseClient
+    .from('mindop_collaboration_tasks')
+    .update({
+      status: 'processing_by_target',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', collaborationTaskId)
+
+  if (updateError1) {
+    console.error('❌ Error actualizando estado a processing:', updateError1.message)
+    return new Response(
+      JSON.stringify({ 
+        error: 'Error actualizando estado de la tarea',
+        code: 'STATUS_UPDATE_ERROR'
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+
+  console.log('✅ Estado actualizado a processing_by_target')
+
+  try {
+    // 5. Procesar la consulta usando la lógica existente
+    console.log('🔍 Generando embedding para la consulta...')
+    const queryEmbedding = await generateEmbedding(task.query)
+
+    console.log('🔍 Buscando chunks relevantes...')
+    const relevantChunks = await searchRelevantChunks(
+      supabaseClient,
+      queryEmbedding,
+      task.target_mindop_id,
+      5
+    )
+
+    let response: string
+    if (relevantChunks.length === 0) {
+      // Generar respuesta de fallback
+      response = await generateGeminiResponse(
+        task.query,
+        "No se encontraron datos específicos relacionados con esta consulta en la base de datos.",
+        task.target_mindop?.mindop_name || 'MindOp',
+        true // Es colaboración
+      )
+    } else {
+      // Construir contexto y generar respuesta
+      const contextParts = relevantChunks.map((chunk, index) => 
+        `Fuente ${index + 1} (${chunk.source_csv_name}, similitud: ${chunk.similarity.toFixed(3)}):\n${chunk.content}`
+      )
+      const relevantContext = contextParts.join('\n\n---\n\n')
+
+      response = await generateGeminiResponse(
+        task.query,
+        relevantContext,
+        task.target_mindop?.mindop_name || 'MindOp',
+        true // Es colaboración
+      )
+    }
+
+    console.log('✅ Respuesta generada con Gemini')
+
+    // 6. Actualizar la tarea con la respuesta y estado 'target_processing_complete'
+    const { error: updateError2 } = await supabaseClient
+      .from('mindop_collaboration_tasks')
+      .update({
+        response: response,
+        status: 'target_processing_complete',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', collaborationTaskId)
+
+    if (updateError2) {
+      console.error('❌ Error actualizando respuesta:', updateError2.message)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Error guardando la respuesta',
+          code: 'RESPONSE_SAVE_ERROR'
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    console.log('✅ Tarea de colaboración procesada exitosamente')
+
+    // 7. Retornar respuesta exitosa
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Tarea de colaboración procesada exitosamente',
+        task: {
+          id: task.id,
+          query: task.query,
+          response: response,
+          status: 'target_processing_complete',
+          requester_mindop: task.requester_mindop,
+          target_mindop: task.target_mindop
+        },
+        chunks_found: relevantChunks.length,
+        timestamp: new Date().toISOString()
+      }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+
+  } catch (processingError) {
+    // Si hay error durante el procesamiento, actualizar la tarea a 'failed'
+    console.error('❌ Error durante el procesamiento:', processingError.message)
+    
+    await supabaseClient
+      .from('mindop_collaboration_tasks')
+      .update({
+        status: 'failed',
+        response: `Error procesando la consulta: ${processingError.message}`,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', collaborationTaskId)
+
+    return new Response(
+      JSON.stringify({ 
+        error: 'Error procesando la tarea de colaboración',
+        details: processingError.message,
+        code: 'PROCESSING_ERROR'
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -260,10 +500,66 @@ serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
-    }
-
-    // Parse request body to get user query and optional target_mindop_id
+    }    // Parse request body to get user query and optional target_mindop_id
     const requestBody = await req.json()
+    
+    // Check if this is a collaboration task processing request
+    if (requestBody.action_type === 'process_collaboration_task') {
+      console.log('🔄 Modo: Procesar tarea de colaboración')
+      const collaborationTaskId = requestBody.collaboration_task_id
+      
+      if (!collaborationTaskId) {
+        return new Response(
+          JSON.stringify({ error: 'collaboration_task_id is required for process_collaboration_task action' }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+      
+      // Initialize Supabase client with service role key
+      console.log('🔧 Inicializando cliente de Supabase para tarea de colaboración...')
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      
+      if (!supabaseUrl || !supabaseServiceKey) {
+        console.error('Missing Supabase configuration')
+        return new Response(
+          JSON.stringify({ error: 'Server configuration error' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+      
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+      // Verify the JWT token and get user
+      console.log('Verifying JWT token...')
+      const token = authHeader.replace('Bearer ', '')
+      const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
+      
+      if (userError || !userData.user) {
+        console.error('Auth error:', userError?.message)
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      const userId = userData.user.id
+      console.log(`Authenticated user for collaboration task: ${userId}`)
+      
+      // Procesar la tarea de colaboración
+      return await processCollaborationTask(supabaseAdmin, collaborationTaskId, userId)
+    }
+    
+    // Standard mode - process query directly
     const userQuery = requestBody.query || requestBody.message
     const targetMindOpId = requestBody.target_mindop_id // Para colaboración dirigida
     
@@ -530,8 +826,22 @@ serve(async (req: Request) => {
 })
 
 /* To invoke:
+
+Standard mode (direct query):
 curl -i --location --request POST 'http://localhost:54321/functions/v1/mindop-service' \
   --header 'Authorization: Bearer YOUR_JWT_TOKEN' \
   --header 'Content-Type: application/json' \
   --data '{"query": "¿Cuáles son las principales tendencias en los datos?"}'
+
+Collaboration mode (direct query to another MindOp):
+curl -i --location --request POST 'http://localhost:54321/functions/v1/mindop-service' \
+  --header 'Authorization: Bearer YOUR_JWT_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{"query": "¿Cuáles son las principales tendencias en los datos?", "target_mindop_id": "TARGET_MINDOP_ID"}'
+
+Collaboration task processing mode:
+curl -i --location --request POST 'http://localhost:54321/functions/v1/mindop-service' \
+  --header 'Authorization: Bearer YOUR_JWT_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{"action_type": "process_collaboration_task", "collaboration_task_id": "TASK_ID"}'
 */
