@@ -403,7 +403,6 @@ Puedes preguntarme sobre:
       console.error('❌ Error inesperado actualizando estado de tarea:', error);
     }
   };
-
   const callMindOpService = async (query: string): Promise<any> => {
     const { data: { session } } = await supabase.auth.getSession();
     
@@ -414,8 +413,18 @@ Puedes preguntarme sobre:
       throw new Error('No hay sesión activa');
     }
 
-    // Preparar el payload con target_mindop_id para colaboración
-    const payload: { query: string; target_mindop_id?: string } = { query };
+    // Preparar el payload con conversation_id y target_mindop_id
+    const payload: { 
+      query: string; 
+      target_mindop_id?: string; 
+      conversation_id?: string;
+    } = { query };
+    
+    // Agregar conversation_id si existe una conversación activa
+    if (currentConversationId) {
+      payload.conversation_id = currentConversationId;
+      console.log('💬 Conversación activa:', currentConversationId);
+    }
     
     if (activeMode === 'collaborate' && selectedTarget && selectedTarget.type === 'connected') {
       payload.target_mindop_id = selectedTarget.id;
@@ -448,7 +457,6 @@ Puedes preguntarme sobre:
     
     return result;
   };
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || isLoading) return;
@@ -475,10 +483,18 @@ Puedes preguntarme sobre:
           content: response.response,
           timestamp: new Date(),
         };
-        setConversation(prev => [...prev, systemMessage]);
+        setConversation(prev => [...prev, systemMessage]);        // Update conversation ID if backend created a new conversation
+        if (response.conversation_id && response.conversation_id !== currentConversationId) {
+          console.log('🆕 Nueva conversación creada por backend:', response.conversation_id);
+          setCurrentConversationId(response.conversation_id);
+          // Refresh conversation list to show the new conversation
+          loadConversationList();
+        }
 
-        // Guardar mensajes en la conversación
-        await saveMessageToConversation(originalQuery, response.response);
+        // Log conversation history usage
+        if (response.history_messages_used > 0) {
+          console.log(`💬 Se utilizaron ${response.history_messages_used} mensajes del historial como contexto`);
+        }
 
         // Si es una respuesta de colaboración y contiene collaboration_task_id, agregarlo a tareas pendientes
         if (response.collaboration_task_id) {
@@ -789,84 +805,19 @@ Puedes preguntarme sobre:
       timestamp: new Date(),
     };
 
-    setConversation([welcomeMessage]);
-  };
-
-  // Función para guardar mensaje en la conversación activa
-  const saveMessageToConversation = async (userMessage: string, systemResponse: string) => {
-    try {
-      let conversationId = currentConversationId;
-
-      // Si no hay conversación activa, crear una nueva
-      if (!conversationId) {
-        const { data: newConversation, error: convError } = await supabase
-          .from('conversations')
-          .insert({
-            user_id: user?.id,
-            mindop_id: userMindOpId,
-            title: userMessage.substring(0, 50) + (userMessage.length > 50 ? '...' : ''),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (convError || !newConversation) {
-          console.error('❌ Error creando conversación:', convError);
-          return;
-        }
-
-        conversationId = newConversation.id;
-        setCurrentConversationId(conversationId);
-        
-        // Actualizar lista de conversaciones
-        loadConversationList();
-      }
-
-      // Guardar mensajes del usuario y del sistema
-      const messagesToSave = [
-        {
-          conversation_id: conversationId,
-          sender_role: 'user',
-          content: userMessage,
-          created_at: new Date().toISOString()
-        },
-        {
-          conversation_id: conversationId,
-          sender_role: 'agent',
-          content: systemResponse,
-          created_at: new Date().toISOString()
-        }
-      ];
-
-      const { error: messagesError } = await supabase
-        .from('conversation_messages')
-        .insert(messagesToSave);
-
-      if (messagesError) {
-        console.error('❌ Error guardando mensajes:', messagesError);
-      } else {
-        console.log('✅ Mensajes guardados en conversación:', conversationId);
-        
-        // Actualizar timestamp de la conversación
-        await supabase
-          .from('conversations')
-          .update({ updated_at: new Date().toISOString() })
-          .eq('id', conversationId);
-      }
-    } catch (error) {
-      console.error('❌ Error en saveMessageToConversation:', error);
-    }
+  setConversation([welcomeMessage]);
   };
 
   // === END CONVERSATION MANAGEMENT FUNCTIONS ===
-
+  // Note: Message saving is now handled by the backend mindop-service
+  // which automatically creates conversations and saves messages
+  
   return (
-    <div className="h-full flex bg-gray-50">
+    <div className="h-full flex bg-gray-50 overflow-hidden">
       {/* Sidebar de Conversaciones */}
       <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 bg-white border-r border-gray-200 flex flex-col overflow-hidden`}>
         {/* Header del Sidebar */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-gray-900 flex items-center">
               <MessageSquare className="w-5 h-5 mr-2" />
@@ -891,7 +842,7 @@ Puedes preguntarme sobre:
         </div>
 
         {/* Lista de Conversaciones */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {loadingConversations ? (
             <div className="p-4 flex items-center justify-center">
               <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
@@ -956,9 +907,9 @@ Puedes preguntarme sobre:
       </div>
 
       {/* Área Principal de Chat */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header con toggle de sidebar e indicador de colaboración */}
-        <div className="border-b border-gray-200 bg-white px-4 py-3">
+        <div className="border-b border-gray-200 bg-white px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               {!sidebarOpen && (
@@ -1006,7 +957,7 @@ Puedes preguntarme sobre:
         </div>
 
         {/* Área de Visualización de Conversación */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0 px-4 py-6">
           <div className="max-w-2xl mx-auto">
             <div className="space-y-4">
               {conversation.map((msg) => renderMessage(msg))}
@@ -1028,7 +979,7 @@ Puedes preguntarme sobre:
         </div>
 
         {/* Barra de Entrada Fija */}
-        <div className="border-t border-gray-200 bg-white px-4 py-4">
+        <div className="border-t border-gray-200 bg-white px-4 py-4 flex-shrink-0">
           <div className="max-w-2xl mx-auto">
             <form onSubmit={handleSendMessage} className="space-y-3">
               {/* Selector de Colaboración Integrado */}

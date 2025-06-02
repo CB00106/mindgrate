@@ -46,6 +46,25 @@ interface CollaborationTask {
   }
 }
 
+interface ConversationMessage {
+  id: string;
+  conversation_id: string;
+  sender_role: 'user' | 'agent';
+  sender_mindop_id?: string;
+  content: string;
+  created_at: string;
+  metadata?: any;
+}
+
+interface Conversation {
+  id: string;
+  user_id: string;
+  mindop_id: string;
+  title?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Generate embedding using OpenAI API
 async function generateEmbedding(text: string): Promise<number[]> {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
@@ -235,6 +254,190 @@ RESPUESTA (mantén un tono cordial y profesional):`
     console.error('Error generating Gemini response:', error)
     throw new Error(`Failed to generate response: ${error.message}`)
   }
+}
+
+// Load conversation history for context
+async function loadConversationHistory(
+  supabaseClient: any,
+  conversationId: string,
+  limit: number = 10
+): Promise<ConversationMessage[]> {
+  try {
+    const { data: messages, error } = await supabaseClient
+      .from('conversation_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      console.error('❌ Error loading conversation history:', error);
+      return [];
+    }
+
+    return messages || [];
+  } catch (error) {
+    console.error('❌ Error in loadConversationHistory:', error);
+    return [];
+  }
+}
+
+// Create a new conversation
+async function createConversation(
+  supabaseClient: any,
+  userId: string,
+  mindopId: string,
+  title?: string
+): Promise<string | null> {
+  try {
+    const { data: conversation, error } = await supabaseClient
+      .from('conversations')
+      .insert({
+        user_id: userId,
+        mindop_id: mindopId,
+        title: title || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error creating conversation:', error);
+      return null;
+    }
+
+    return conversation.id;
+  } catch (error) {
+    console.error('❌ Error in createConversation:', error);
+    return null;
+  }
+}
+
+// Save messages to conversation
+async function saveConversationMessages(
+  supabaseClient: any,
+  conversationId: string,
+  userMessage: string,
+  assistantResponse: string,
+  mindopId: string
+): Promise<boolean> {
+  try {
+    const messages = [
+      {
+        conversation_id: conversationId,
+        sender_role: 'user',
+        content: userMessage,
+        created_at: new Date().toISOString()
+      },
+      {
+        conversation_id: conversationId,
+        sender_role: 'agent',
+        sender_mindop_id: mindopId,
+        content: assistantResponse,
+        created_at: new Date().toISOString()
+      }
+    ];
+
+    const { error: messagesError } = await supabaseClient
+      .from('conversation_messages')
+      .insert(messages);
+
+    if (messagesError) {
+      console.error('❌ Error saving conversation messages:', messagesError);
+      return false;
+    }
+
+    // Update conversation timestamp
+    const { error: updateError } = await supabaseClient
+      .from('conversations')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', conversationId);
+
+    if (updateError) {
+      console.error('❌ Error updating conversation timestamp:', updateError);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('❌ Error in saveConversationMessages:', error);
+    return false;
+  }
+}
+
+// Build conversation context for LLM
+function buildConversationContext(
+  messages: ConversationMessage[],
+  relevantContext: string
+): string {
+  if (messages.length === 0) {
+    return relevantContext;
+  }
+
+  // Build conversation history
+  const conversationHistory = messages
+    .slice(-6) // Last 6 messages to keep context manageable
+    .map(msg => {
+      const role = msg.sender_role === 'user' ? 'Usuario' : 'Asistente';
+      return `${role}: ${msg.content}`;
+    })
+    .join('\n\n');
+
+  return `Historial de conversación reciente:
+${conversationHistory}
+
+Información relevante de la base de datos:
+${relevantContext}`;
+}
+
+// Auto-create MindOp for user if not exists
+async function ensureUserHasMindOp(
+  supabaseClient: any,
+  userId: string
+): Promise<MindopRecord> {
+  console.log(`🔍 Verificando MindOp para usuario: ${userId}`);
+  
+  // Try to get existing MindOp
+  const { data: existingMindOp, error: findError } = await supabaseClient
+    .from('mindops')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  if (findError) {
+    if (findError.code === 'PGRST116') {
+      // No MindOp found, create one automatically
+      console.log('🔄 No se encontró MindOp, creando automáticamente...');
+      
+      const defaultName = 'Mi MindOp Principal';
+      const defaultDescription = 'MindOp creado automáticamente para gestionar tus datos y conversaciones.';
+      
+      const { data: newMindOp, error: createError } = await supabaseClient
+        .from('mindops')
+        .insert({
+          user_id: userId,
+          mindop_name: defaultName,
+          mindop_description: defaultDescription
+        })
+        .select('*')
+        .single();
+        
+      if (createError) {
+        console.error('❌ Error creando MindOp automáticamente:', createError);
+        throw new Error(`No se pudo crear MindOp automáticamente: ${createError.message}`);
+      }
+      
+      console.log('✅ MindOp creado automáticamente:', newMindOp.id);
+      return newMindOp as MindopRecord;
+    } else {
+      // Other database error
+      console.error('❌ Error consultando MindOp:', findError);
+      throw new Error(`Error accediendo a la configuración de MindOp: ${findError.message}`);
+    }
+  }
+
+  console.log(`✅ MindOp existente encontrado: ${existingMindOp.id}`);
+  return existingMindOp as MindopRecord;
 }
 
 // Process collaboration task
@@ -558,13 +761,14 @@ serve(async (req: Request) => {
       // Procesar la tarea de colaboración
       return await processCollaborationTask(supabaseAdmin, collaborationTaskId, userId)
     }
-    
-    // Standard mode - process query directly
+      // Standard mode - process query directly
     const userQuery = requestBody.query || requestBody.message
     const targetMindOpId = requestBody.target_mindop_id // Para colaboración dirigida
+    const conversationId = requestBody.conversation_id // Para manejo de conversaciones
     
     console.log('📝 Query recibida:', userQuery)
     console.log('🎯 Target MindOp ID:', targetMindOpId || 'No especificado (usando propio MindOp)')
+    console.log('💬 Conversation ID:', conversationId || 'Nueva conversación')
 
     if (!userQuery || typeof userQuery !== 'string' || userQuery.trim() === '') {
       return new Response(
@@ -679,44 +883,49 @@ serve(async (req: Request) => {
 
       mindop = connectionData.target_mindop as MindopRecord
       console.log(`✅ Acceso autorizado al MindOp: ${mindop.mindop_name} (${mindop.id})`)
-      
-    } else {
+        } else {
       // MODO LOCAL: Procesar inmediatamente como antes
-      console.log('👤 Modo local: consultando propio MindOp...')
+      console.log('👤 Modo local: obteniendo o creando MindOp...')
       
-      const { data: mindopData, error: mindopError } = await supabaseAdmin
-        .from('mindops')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
-
-      if (mindopError) {
-        if (mindopError.code === 'PGRST116') {
-          // No MindOp configuration found
-          return new Response(
-            JSON.stringify({ 
-              error: 'No MindOp configuration found. Please configure your MindOp first.',
-              code: 'NO_MINDOP_CONFIG'
-            }),
-            { 
-              status: 404, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          )
-        }
-        
-        console.error('Database error:', mindopError)
+      try {
+        mindop = await ensureUserHasMindOp(supabaseAdmin, userId);
+        console.log(`✅ Usando propio MindOp: ${mindop.mindop_name} (${mindop.id})`)
+      } catch (autoCreateError) {
+        console.error('❌ Error obteniendo o creando MindOp:', autoCreateError)
         return new Response(
-          JSON.stringify({ error: 'Database error occurred' }),
+          JSON.stringify({ 
+            error: autoCreateError.message || 'No se pudo obtener o crear configuración de MindOp',
+            code: 'MINDOP_ACCESS_ERROR'
+          }),
           { 
             status: 500, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         )
       }
+    }
 
-      mindop = mindopData as MindopRecord
-      console.log(`✅ Usando propio MindOp: ${mindop.mindop_name} (${mindop.id})`)
+    // === CONVERSATION MANAGEMENT ===
+    let currentConversationId = conversationId;
+    let conversationHistory: ConversationMessage[] = [];
+    
+    // If conversation_id is provided, load conversation history
+    if (conversationId) {
+      console.log('💬 Cargando historial de conversación:', conversationId);
+      conversationHistory = await loadConversationHistory(supabaseAdmin, conversationId, 10);
+      console.log(`📋 Historial cargado: ${conversationHistory.length} mensajes`);
+    } else {
+      // Create new conversation if none provided
+      console.log('🆕 Creando nueva conversación...');
+      const title = userQuery.substring(0, 50) + (userQuery.length > 50 ? '...' : '');
+      currentConversationId = await createConversation(supabaseAdmin, userId, mindop.id, title);
+      
+      if (!currentConversationId) {
+        console.error('❌ Error creando nueva conversación');
+        // Continue without conversation management for this request
+      } else {
+        console.log('✅ Nueva conversación creada:', currentConversationId);
+      }
     }
 
     // Procesar tanto consultas locales como de colaboración
@@ -731,21 +940,30 @@ serve(async (req: Request) => {
       queryEmbedding,
       mindop.id,
       5 // Limit to top 5 most relevant chunks
-    );
-
-    if (relevantChunks.length === 0) {
+    );    if (relevantChunks.length === 0) {
       // Generate a helpful response even without specific data context
+      const contextWithHistory = conversationHistory.length > 0 
+        ? buildConversationContext(conversationHistory, "No se encontraron datos específicos relacionados con esta consulta en la base de datos del usuario.")
+        : "No se encontraron datos específicos relacionados con esta consulta en la base de datos del usuario.";
+        
       const fallbackResponse = await generateGeminiResponse(
         userQuery,
-        "No se encontraron datos específicos relacionados con esta consulta en la base de datos del usuario.",
+        contextWithHistory,
         mindop.mindop_name,
         isCollaborationRequest // Usar flag de colaboración
       )
+      
+      // Save messages to conversation if we have a conversation ID
+      if (currentConversationId) {
+        await saveConversationMessages(supabaseAdmin, currentConversationId, userQuery, fallbackResponse, mindop.id);
+      }
       
       return new Response(
         JSON.stringify({
           success: true,
           response: fallbackResponse,
+          conversation_id: currentConversationId,
+          history_messages_used: conversationHistory.length,
           mindop: {
             id: mindop.id,
             name: mindop.mindop_name,
@@ -760,29 +978,39 @@ serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
-    }
-
-    // Build context from relevant chunks
+    }    // Build context from relevant chunks
     const contextParts = relevantChunks.map((chunk, index) => 
       `Fuente ${index + 1} (${chunk.source_csv_name}, similitud: ${chunk.similarity.toFixed(3)}):\n${chunk.content}`
     )
     const relevantContext = contextParts.join('\n\n---\n\n')
+    
+    // Build context including conversation history
+    const fullContext = conversationHistory.length > 0 
+      ? buildConversationContext(conversationHistory, relevantContext)
+      : relevantContext;
 
     console.log(`Found ${relevantChunks.length} relevant chunks, generating Gemini response`)
 
     // Generate response using Gemini
     const geminiResponse = await generateGeminiResponse(
       userQuery,
-      relevantContext,
+      fullContext,
       mindop.mindop_name,
       isCollaborationRequest // Usar flag de colaboración
     )
+    
+    // Save messages to conversation if we have a conversation ID
+    if (currentConversationId) {
+      await saveConversationMessages(supabaseAdmin, currentConversationId, userQuery, geminiResponse, mindop.id);
+    }
 
     // Return successful response
     return new Response(
       JSON.stringify({
         success: true,
         response: geminiResponse,
+        conversation_id: currentConversationId,
+        history_messages_used: conversationHistory.length,
         mindop: {
           id: mindop.id,
           name: mindop.mindop_name,

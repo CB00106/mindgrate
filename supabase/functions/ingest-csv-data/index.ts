@@ -183,19 +183,64 @@ function parseCSVContent(csvContent: string): string[] {
   }
 }
 
-// Get user's mindop_id
+// Get user's mindop_id with improved error handling and auto-creation fallback
 async function getUserMindopId(supabaseClient: any, userId: string): Promise<string> {
+  console.log(`🔍 Buscando MindOp para usuario: ${userId}`);
+  
   const { data, error } = await supabaseClient
     .from('mindops')
-    .select('id')
+    .select('id, mindop_name, created_at')
     .eq('user_id', userId)
     .single()
 
-  if (error || !data) {
-    throw new Error('No MindOp found for this user. Please create a MindOp first.')
+  if (error) {
+    console.error('❌ Error consultando MindOp:', error.message);
+    
+    if (error.code === 'PGRST116') {
+      // No rows found - el usuario no tiene MindOp, crear uno automáticamente
+      console.log('🔄 No se encontró MindOp para el usuario, creando uno automáticamente...');
+      
+      try {
+        // Crear MindOp por defecto sin necesidad de obtener info adicional del usuario
+        const defaultName = 'Mi MindOp Principal';
+        const defaultDescription = 'MindOp creado automáticamente para gestionar tus datos y conversaciones.';
+        
+        // Crear MindOp automáticamente usando el cliente que ya tiene autorización
+        const { data: newMindop, error: createError } = await supabaseClient
+          .from('mindops')
+          .insert({
+            user_id: userId,
+            mindop_name: defaultName,
+            mindop_description: defaultDescription
+          })
+          .select('id')
+          .single();
+          
+        if (createError) {
+          console.error('❌ Error creando MindOp automáticamente:', createError.message);
+          throw new Error(`No se pudo crear MindOp automáticamente. Error: ${createError.message}. Intenta recargar la página.`);
+        }
+        
+        console.log('✅ MindOp creado automáticamente:', newMindop.id);
+        return newMindop.id;
+        
+      } catch (autoCreateError) {
+        console.error('❌ Error en creación automática de MindOp:', autoCreateError);
+        throw new Error(`No se encontró MindOp para este usuario y no se pudo crear automáticamente. Por favor, recarga la página o contacta al soporte técnico.`);
+      }
+    } else {
+      // Otro tipo de error de base de datos
+      throw new Error(`Error accediendo a la configuración de MindOp: ${error.message}. Por favor, intenta de nuevo.`);
+    }
   }
 
-  return data.id
+  if (!data) {
+    console.warn('⚠️ Consulta exitosa pero sin datos para el usuario:', userId);
+    throw new Error('No se encontró configuración de MindOp para este usuario. Por favor, recarga la página.');
+  }
+
+  console.log(`✅ MindOp encontrado: ${data.id} (${data.mindop_name})`);
+  return data.id;
 }
 
 // Insert chunks into database
