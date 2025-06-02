@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import { supabase } from '@/services/supabaseClient';
-import { AlertCircle, CheckCircle, Loader2, Database, Users, UserMinus, X } from 'lucide-react';
+import { AlertCircle, Loader2, Database, Users, X } from 'lucide-react';
 
 interface FollowConnection {
   id: string;
@@ -22,14 +22,12 @@ interface FollowConnection {
   };
 }
 
-export const ConnectionsDebugger: React.FC = () => {
-  const { user } = useAuth();
+export const ConnectionsDebugger: React.FC = () => {  const { user } = useAuth();
   const [userMindOpId, setUserMindOpId] = useState<string | null>(null);
   const [following, setFollowing] = useState<FollowConnection[]>([]);
   const [followers, setFollowers] = useState<FollowConnection[]>([]);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedConnection, setSelectedConnection] = useState<FollowConnection | null>(null);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();

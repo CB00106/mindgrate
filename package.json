@@ -2,13 +2,15 @@
   "name": "mindops-app",
   "private": true,
   "version": "1.0.0",
-  "type": "module",
-  "scripts": {
+  "type": "module",  "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:production": "npm run type-check && npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
+    "start": "vite preview --port 3000",
+    "deploy:render": "bash ./scripts/deploy-render.sh",
     "supabase:functions:serve": "supabase functions serve --env-file .env",
     "supabase:functions:deploy": "supabase functions deploy mindop-service",
     "supabase:functions:logs": "supabase functions logs mindop-service"
