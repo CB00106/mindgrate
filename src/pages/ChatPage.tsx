@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, ChevronDown, Users, User, PlaneTakeoff } from 'lucide-react';
+import { Loader2, ChevronDown, Users, User, PlaneTakeoff, MessageSquare, Plus, Trash2, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import { supabase } from '@/services/supabaseClient';
@@ -47,12 +47,32 @@ interface CollaborationTask {
   };
 }
 
+interface StoredConversation {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+  mindop_id: string;
+  message_count?: number;
+  preview?: string;
+}
+
+// StoredMessage interface - used for type checking database responses
+interface StoredMessage {
+  id: string;
+  conversation_id: string;
+  sender_role: 'user' | 'agent';
+  content: string;
+  created_at: string;
+}
+
 const ChatPage: React.FC = () => {
   const { user, userMindOpId } = useAuth();
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeMode, setActiveMode] = useState<'mindop' | 'collaborate'>('mindop');
-    // Estados para colaboración dirigida
+  
+  // Estados para colaboración dirigida
   const [connectedMindOps, setConnectedMindOps] = useState<ConnectedMindOp[]>([]);
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<CollaborationTarget | null>(null);
@@ -66,17 +86,24 @@ const ChatPage: React.FC = () => {
   // Estado para conversación (se actualiza dinámicamente)
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
   
+  // Estado para gestión de conversaciones
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [conversationList, setConversationList] = useState<StoredConversation[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  
   // Ref para auto-scroll
   const conversationEndRef = useRef<HTMLDivElement>(null);
 
-  // Inicializar mensaje de bienvenida
+  // Inicializar mensaje de bienvenida solo para nuevas conversaciones
   useEffect(() => {
-    const getWelcomeMessage = () => {
-      const firstName = user?.user_metadata?.first_name || 'Usuario';
-      
-      if (activeMode === 'collaborate' && selectedTarget) {
-        if (selectedTarget.type === 'connected') {
-          return `¡Hola ${firstName}! 👋 
+    if (!currentConversationId && conversation.length === 0) {
+      const getWelcomeMessage = () => {
+        const firstName = user?.user_metadata?.first_name || 'Usuario';
+        
+        if (activeMode === 'collaborate' && selectedTarget) {
+          if (selectedTarget.type === 'connected') {
+            return `¡Hola ${firstName}! 👋 
 
 Estás en modo colaboración con **${selectedTarget.name}**. 
 
@@ -88,8 +115,8 @@ Puedes hacer preguntas sobre los datos de este MindOp conectado. Por ejemplo:
 El MindOp target procesará tu consulta y compartirá insights de sus datos contigo.
 
 ¿Qué te gustaría saber?`;
-        } else {
-          return `¡Hola ${firstName}! 👋 
+          } else {
+            return `¡Hola ${firstName}! 👋 
 
 Estás consultando tu propio MindOp en modo colaboración.
 
@@ -100,9 +127,9 @@ Puedes preguntarme sobre:
 • Patrones o insights interesantes
 
 ¿En qué puedo ayudarte hoy?`;
-        }
-      } else {
-        return `¡Hola ${firstName}! 👋 
+          }
+        } else {
+          return `¡Hola ${firstName}! 👋 
 
 Soy tu asistente inteligente de MindOp. Estoy aquí para ayudarte a explorar y analizar tus datos de manera conversacional.
 
@@ -113,18 +140,19 @@ Puedes preguntarme sobre:
 • Patrones o insights interesantes
 
 ¿En qué puedo ayudarte hoy?`;
-      }
-    };
+        }
+      };
 
-    const welcomeMessage: ConversationMessage = {
-      id: 1,
-      type: 'system',
-      content: getWelcomeMessage(),
-      timestamp: new Date(),
-    };
+      const welcomeMessage: ConversationMessage = {
+        id: 1,
+        type: 'system',
+        content: getWelcomeMessage(),
+        timestamp: new Date(),
+      };
 
-    setConversation([welcomeMessage]);
-  }, [user, activeMode, selectedTarget]);
+      setConversation([welcomeMessage]);
+    }
+  }, [user, activeMode, selectedTarget, currentConversationId]);
 
   // Efecto para cerrar el selector cuando se hace clic fuera
   useEffect(() => {
@@ -146,12 +174,15 @@ Puedes preguntarme sobre:
     if (userMindOpId) {
       loadUserConnections();
       initializeCollaborationTargets();
+      loadConversationList();
     }
   }, [userMindOpId]);
+
   // Inicializar targets disponibles cuando cambian las conexiones
   useEffect(() => {
     initializeCollaborationTargets();
   }, [connectedMindOps, userMindOpId]);
+
   // Auto-scroll al último mensaje
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -264,7 +295,8 @@ Puedes preguntarme sobre:
       // Seleccionar por defecto el propio MindOp si no hay selección
       if (!selectedTarget && targets.length > 0) {
         setSelectedTarget(targets[0]);
-      }    } catch (error) {
+      }
+    } catch (error) {
       console.error('Error inicializando targets:', error);
     }
   };
@@ -274,7 +306,9 @@ Puedes preguntarme sobre:
     if (!userMindOpId || pendingCollaborationTasks.size === 0) return;
 
     try {
-      console.log('🔄 Verificando respuestas de colaboración...', Array.from(pendingCollaborationTasks));      // Consultar tareas completadas
+      console.log('🔄 Verificando respuestas de colaboración...', Array.from(pendingCollaborationTasks));
+      
+      // Consultar tareas completadas
       const { data: completedTasks, error } = await supabase
         .from('mindop_collaboration_tasks')
         .select(`
@@ -306,7 +340,9 @@ Puedes preguntarme sobre:
         return;
       }
 
-      console.log(`✅ Encontradas ${completedTasks.length} respuestas nuevas`);      // Procesar cada respuesta
+      console.log(`✅ Encontradas ${completedTasks.length} respuestas nuevas`);
+      
+      // Procesar cada respuesta
       for (const task of completedTasks) {
         await processCollaborationResponse(task as unknown as CollaborationTask);
       }
@@ -366,7 +402,9 @@ Puedes preguntarme sobre:
     } catch (error) {
       console.error('❌ Error inesperado actualizando estado de tarea:', error);
     }
-  };const callMindOpService = async (query: string): Promise<any> => {
+  };
+
+  const callMindOpService = async (query: string): Promise<any> => {
     const { data: { session } } = await supabase.auth.getSession();
     
     console.log('🔐 Sesión activa:', !!session);
@@ -410,6 +448,7 @@ Puedes preguntarme sobre:
     
     return result;
   };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || isLoading) return;
@@ -437,6 +476,9 @@ Puedes preguntarme sobre:
           timestamp: new Date(),
         };
         setConversation(prev => [...prev, systemMessage]);
+
+        // Guardar mensajes en la conversación
+        await saveMessageToConversation(originalQuery, response.response);
 
         // Si es una respuesta de colaboración y contiene collaboration_task_id, agregarlo a tareas pendientes
         if (response.collaboration_task_id) {
@@ -475,7 +517,9 @@ Puedes preguntarme sobre:
     } finally {
       setIsLoading(false);
     }
-  };  const renderMessage = (msg: ConversationMessage) => {
+  };
+
+  const renderMessage = (msg: ConversationMessage) => {
     const getMessageStyles = () => {
       switch (msg.type) {
         case 'user':
@@ -539,7 +583,7 @@ Puedes preguntarme sobre:
                 </p>
               )}
             </div>
-          )}          
+          )}
           
           <p className="text-xs mt-3 opacity-60 text-right">
             {msg.timestamp.toLocaleTimeString()}
@@ -547,224 +591,621 @@ Puedes preguntarme sobre:
         </div>
       </div>
     );
-  };  return (
-    <div className="h-full flex flex-col bg-gray-50">
-      {/* Indicador de Tareas de Colaboración Pendientes */}
-      {pendingCollaborationTasks.size > 0 && (
-        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2">
-          <div className="max-w-2xl mx-auto flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                <Users className="w-4 h-4 text-blue-600" />
-              </div>
-              <span className="text-sm text-blue-800 font-medium">
-                {pendingCollaborationTasks.size} solicitud{pendingCollaborationTasks.size !== 1 ? 'es' : ''} de colaboración pendiente{pendingCollaborationTasks.size !== 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className="text-xs text-blue-600">
-              Verificando respuestas...
-            </div>
-          </div>
-        </div>
-      )}
+  };
 
-      {/* Área de Visualización de Conversación */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 min-h-0">
-        <div className="max-w-2xl mx-auto">
-          <div className="space-y-4">            {conversation.map((msg) => renderMessage(msg))}
-            
-            {/* Loading indicator */}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-gray-200 text-gray-600 px-4 py-3 rounded-2xl shadow-sm max-w-xs flex items-center space-x-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Analizando tus datos...</span>
-                </div>
-              </div>
-            )}
-            
-            {/* Elemento para auto-scroll */}
-            <div ref={conversationEndRef} />
+  // === CONVERSATION MANAGEMENT FUNCTIONS ===
+
+  // Función para cargar la lista de conversaciones
+  const loadConversationList = async () => {
+    if (!user || !userMindOpId) return;
+
+    setLoadingConversations(true);
+    try {
+      const { data: conversations, error } = await supabase
+        .from('conversations')
+        .select(`
+          id,
+          title,
+          created_at,
+          updated_at,
+          mindop_id
+        `)
+        .eq('user_id', user.id)
+        .eq('mindop_id', userMindOpId)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error cargando conversaciones:', error);
+        return;
+      }
+
+      // Obtener preview de mensajes para cada conversación
+      const conversationsWithPreview = await Promise.all(
+        conversations.map(async (conv) => {
+          const { data: messages } = await supabase
+            .from('conversation_messages')
+            .select('content, sender_role')
+            .eq('conversation_id', conv.id)
+            .order('created_at', { ascending: true })
+            .limit(2);
+
+          let preview = '';
+          let title = conv.title;
+          
+          if (messages && messages.length > 0) {
+            const firstUserMessage = messages.find(m => m.sender_role === 'user');
+            if (firstUserMessage) {
+              preview = firstUserMessage.content.substring(0, 50) + 
+                       (firstUserMessage.content.length > 50 ? '...' : '');
+              
+              // Si no hay título, usar el primer mensaje como título
+              if (!title) {
+                title = firstUserMessage.content.substring(0, 30) + 
+                       (firstUserMessage.content.length > 30 ? '...' : '');
+              }
+            }
+          }
+
+          return {
+            ...conv,
+            title: title || 'Nueva conversación',
+            preview,
+            message_count: messages?.length || 0
+          };
+        })
+      );
+
+      setConversationList(conversationsWithPreview);
+    } catch (error) {
+      console.error('❌ Error cargando conversaciones:', error);
+    } finally {
+      setLoadingConversations(false);
+    }
+  };
+
+  // Función para cargar una conversación específica
+  const loadConversation = async (conversationId: string) => {
+    if (!conversationId) return;
+
+    setIsLoading(true);
+    try {      const { data: messages, error } = await supabase
+        .from('conversation_messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true }) as { data: StoredMessage[] | null, error: any };      if (error) {
+        console.error('❌ Error cargando mensajes:', error);
+        return;
+      }
+
+      if (!messages) {
+        console.warn('⚠️ No se encontraron mensajes para la conversación');
+        setConversation([]);
+        setCurrentConversationId(conversationId);
+        return;
+      }
+
+      // Convertir mensajes de BD a formato de la UI
+      const conversationMessages: ConversationMessage[] = messages.map((msg, index) => ({
+        id: index + 1,
+        type: msg.sender_role === 'user' ? 'user' : 'system',
+        content: msg.content,
+        timestamp: new Date(msg.created_at)
+      }));
+
+      setConversation(conversationMessages);
+      setCurrentConversationId(conversationId);
+      
+      console.log('✅ Conversación cargada:', conversationId, 'Mensajes:', conversationMessages.length);
+    } catch (error) {
+      console.error('❌ Error cargando conversación:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Función para eliminar una conversación
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId)
+        .eq('user_id', user?.id);
+
+      if (error) {
+        console.error('❌ Error eliminando conversación:', error);
+        return;
+      }
+
+      // Actualizar lista local
+      setConversationList(prev => prev.filter(conv => conv.id !== conversationId));
+      
+      // Si era la conversación activa, iniciar nueva
+      if (currentConversationId === conversationId) {
+        startNewConversation();
+      }
+
+      console.log('✅ Conversación eliminada');
+    } catch (error) {
+      console.error('❌ Error eliminando conversación:', error);
+    }
+  };
+
+  // Función para iniciar una nueva conversación
+  const startNewConversation = () => {
+    console.log('🆕 Iniciando nueva conversación...');
+    setCurrentConversationId(null);
+    setConversation([]);
+    
+    // Regenerar mensaje de bienvenida
+    const firstName = user?.user_metadata?.first_name || 'Usuario';
+    const getWelcomeMessage = () => {
+      if (activeMode === 'collaborate' && selectedTarget) {
+        if (selectedTarget.type === 'connected') {
+          return `¡Hola ${firstName}! 👋 
+
+Estás en modo colaboración con **${selectedTarget.name}**. 
+
+Puedes hacer preguntas sobre los datos de este MindOp conectado. Por ejemplo:
+• "¿Qué tendencias muestran tus datos?"
+• "Comparte un resumen de tu información"
+• "¿Qué patrones interesantes has encontrado?"
+
+El MindOp target procesará tu consulta y compartirá insights de sus datos contigo.
+
+¿Qué te gustaría saber?`;
+        } else {
+          return `¡Hola ${firstName}! 👋 
+
+Estás consultando tu propio MindOp en modo colaboración.
+
+Puedes preguntarme sobre:
+• Análisis de tendencias en tus datos
+• Búsqueda de información específica
+• Resúmenes y estadísticas
+• Patrones o insights interesantes
+
+¿En qué puedo ayudarte hoy?`;
+        }
+      } else {
+        return `¡Hola ${firstName}! 👋 
+
+Soy tu asistente inteligente de MindOp. Estoy aquí para ayudarte a explorar y analizar tus datos de manera conversacional.
+
+Puedes preguntarme sobre:
+• Análisis de tendencias en tus datos
+• Búsqueda de información específica
+• Resúmenes y estadísticas
+• Patrones o insights interesantes
+
+¿En qué puedo ayudarte hoy?`;
+      }
+    };
+
+    const welcomeMessage: ConversationMessage = {
+      id: Date.now(),
+      type: 'system',
+      content: getWelcomeMessage(),
+      timestamp: new Date(),
+    };
+
+    setConversation([welcomeMessage]);
+  };
+
+  // Función para guardar mensaje en la conversación activa
+  const saveMessageToConversation = async (userMessage: string, systemResponse: string) => {
+    try {
+      let conversationId = currentConversationId;
+
+      // Si no hay conversación activa, crear una nueva
+      if (!conversationId) {
+        const { data: newConversation, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            user_id: user?.id,
+            mindop_id: userMindOpId,
+            title: userMessage.substring(0, 50) + (userMessage.length > 50 ? '...' : ''),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (convError || !newConversation) {
+          console.error('❌ Error creando conversación:', convError);
+          return;
+        }
+
+        conversationId = newConversation.id;
+        setCurrentConversationId(conversationId);
+        
+        // Actualizar lista de conversaciones
+        loadConversationList();
+      }
+
+      // Guardar mensajes del usuario y del sistema
+      const messagesToSave = [
+        {
+          conversation_id: conversationId,
+          sender_role: 'user',
+          content: userMessage,
+          created_at: new Date().toISOString()
+        },
+        {
+          conversation_id: conversationId,
+          sender_role: 'agent',
+          content: systemResponse,
+          created_at: new Date().toISOString()
+        }
+      ];
+
+      const { error: messagesError } = await supabase
+        .from('conversation_messages')
+        .insert(messagesToSave);
+
+      if (messagesError) {
+        console.error('❌ Error guardando mensajes:', messagesError);
+      } else {
+        console.log('✅ Mensajes guardados en conversación:', conversationId);
+        
+        // Actualizar timestamp de la conversación
+        await supabase
+          .from('conversations')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', conversationId);
+      }
+    } catch (error) {
+      console.error('❌ Error en saveMessageToConversation:', error);
+    }
+  };
+
+  // === END CONVERSATION MANAGEMENT FUNCTIONS ===
+
+  return (
+    <div className="h-full flex bg-gray-50">
+      {/* Sidebar de Conversaciones */}
+      <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 bg-white border-r border-gray-200 flex flex-col overflow-hidden`}>
+        {/* Header del Sidebar */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-gray-900 flex items-center">
+              <MessageSquare className="w-5 h-5 mr-2" />
+              Conversaciones
+            </h2>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform ${sidebarOpen ? 'rotate-180' : 'rotate-90'}`} />
+            </button>
           </div>
+          
+          {/* Botón Nueva Conversación */}
+          <button
+            onClick={startNewConversation}
+            className="w-full flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nueva Conversación
+          </button>
+        </div>
+
+        {/* Lista de Conversaciones */}
+        <div className="flex-1 overflow-y-auto">
+          {loadingConversations ? (
+            <div className="p-4 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              <span className="ml-2 text-sm text-gray-500">Cargando...</span>
+            </div>
+          ) : conversationList.length > 0 ? (
+            <div className="space-y-1 p-2">
+              {conversationList.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`group relative p-3 rounded-lg cursor-pointer transition-colors ${
+                    currentConversationId === conv.id
+                      ? 'bg-blue-50 border border-blue-200'
+                      : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => loadConversation(conv.id)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm text-gray-900 truncate">
+                        {conv.title}
+                      </h3>
+                      {conv.preview && (
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                          {conv.preview}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-gray-400">
+                          {new Date(conv.updated_at).toLocaleDateString()}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {conv.message_count} msgs
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Botón eliminar (visible en hover) */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('¿Eliminar esta conversación?')) {
+                          deleteConversation(conv.id);
+                        }
+                      }}
+                      className="opacity-0 group-hover:opacity-100 ml-2 p-1 hover:bg-red-100 rounded transition-all"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 text-center text-gray-500">
+              <MessageSquare className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">No hay conversaciones</p>
+              <p className="text-xs mt-1">Inicia una nueva conversación</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Barra de Entrada Fija */}
-      <div className="border-t border-gray-200 bg-white px-4 py-4">
-        <div className="max-w-2xl mx-auto">
-          <form onSubmit={handleSendMessage} className="space-y-3">
-            {/* Selector de Colaboración Integrado */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                {/* Botón Mi MindOp */}
+      {/* Área Principal de Chat */}
+      <div className="flex-1 flex flex-col">
+        {/* Header con toggle de sidebar e indicador de colaboración */}
+        <div className="border-b border-gray-200 bg-white px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {!sidebarOpen && (
                 <button
-                  type="button"
-                  onClick={() => {
-                    setActiveMode('mindop');
-                    setShowTargetSelector(false);
-                    const ownTarget = availableTargets.find(t => t.type === 'own');
-                    if (ownTarget) {
-                      setSelectedTarget(ownTarget);
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 flex items-center space-x-1.5 ${
-                    activeMode === 'mindop'
-                      ? 'bg-gray-900 text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  onClick={() => setSidebarOpen(true)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <User className="w-3.5 h-3.5" />
-                  <span>Mi MindOp</span>
+                  <Menu className="w-5 h-5 text-gray-600" />
                 </button>
+              )}
+              <div className="flex items-center space-x-2">
+                {currentConversationId ? (
+                  <>
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700">Conversación activa</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm text-gray-700">Nueva conversación</span>
+                  </>
+                )}
+              </div>
+            </div>
 
-                {/* Botón Colaborar con Selector Integrado */}
-                <div className="relative" data-target-selector>
+            {/* Indicador de Tareas de Colaboración Pendientes en header */}
+            {pendingCollaborationTasks.size > 0 && (
+              <div className="flex items-center space-x-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <Users className="w-4 h-4 text-blue-600" />
+                <span className="text-sm text-blue-800 font-medium">
+                  {pendingCollaborationTasks.size} colaboración{pendingCollaborationTasks.size !== 1 ? 'es' : ''} pendiente{pendingCollaborationTasks.size !== 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+
+            <button
+              onClick={startNewConversation}
+              className="flex items-center space-x-2 px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nueva Conversación</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Área de Visualización de Conversación */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 min-h-0">
+          <div className="max-w-2xl mx-auto">
+            <div className="space-y-4">
+              {conversation.map((msg) => renderMessage(msg))}
+              
+              {/* Loading indicator */}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white border border-gray-200 text-gray-600 px-4 py-3 rounded-2xl shadow-sm max-w-xs flex items-center space-x-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Analizando tus datos...</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Elemento para auto-scroll */}
+              <div ref={conversationEndRef} />
+            </div>
+          </div>
+        </div>
+
+        {/* Barra de Entrada Fija */}
+        <div className="border-t border-gray-200 bg-white px-4 py-4">
+          <div className="max-w-2xl mx-auto">
+            <form onSubmit={handleSendMessage} className="space-y-3">
+              {/* Selector de Colaboración Integrado */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  {/* Botón Mi MindOp */}
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveMode('collaborate');
-                      if (availableTargets.length > 1) {
-                        setShowTargetSelector(!showTargetSelector);
-                      } else {
-                        setShowTargetSelector(false);
-                        if (!selectedTarget && availableTargets.length > 0) {
-                          setSelectedTarget(availableTargets[0]);
-                        }
+                      setActiveMode('mindop');
+                      setShowTargetSelector(false);
+                      const ownTarget = availableTargets.find(t => t.type === 'own');
+                      if (ownTarget) {
+                        setSelectedTarget(ownTarget);
                       }
                     }}
-                    disabled={loadingConnections}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 flex items-center space-x-1.5 ${
-                      activeMode === 'collaborate'
+                      activeMode === 'mindop'
                         ? 'bg-gray-900 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    {loadingConnections ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Users className="w-3.5 h-3.5" />
-                    )}
-                    <span>Colaborar</span>
-                    {activeMode === 'collaborate' && availableTargets.length > 1 && (
-                      <ChevronDown className="w-3 h-3" />
-                    )}
+                    <User className="w-3.5 h-3.5" />
+                    <span>Mi MindOp</span>
                   </button>
 
-                  {/* Dropdown para selección de target */}
-                  {showTargetSelector && activeMode === 'collaborate' && availableTargets.length > 1 && (
-                    <div className="absolute bottom-full mb-2 left-0 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                      {availableTargets.map((target) => (
-                        <button
-                          key={target.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedTarget(target);
-                            setShowTargetSelector(false);
-                          }}
-                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
-                            selectedTarget?.id === target.id ? 'bg-blue-50' : ''
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2">
-                            {target.type === 'connected' ? (
-                              <Users className="w-4 h-4 text-blue-600" />
-                            ) : (
-                              <User className="w-4 h-4 text-gray-600" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-gray-900 truncate">
-                                {target.name}
-                              </div>
-                              {target.description && (
-                                <div className="text-xs text-gray-500 truncate">
-                                  {target.description}
-                                </div>
+                  {/* Botón Colaborar con Selector Integrado */}
+                  <div className="relative" data-target-selector>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMode('collaborate');
+                        if (availableTargets.length > 1) {
+                          setShowTargetSelector(!showTargetSelector);
+                        } else {
+                          setShowTargetSelector(false);
+                          if (!selectedTarget && availableTargets.length > 0) {
+                            setSelectedTarget(availableTargets[0]);
+                          }
+                        }
+                      }}
+                      disabled={loadingConnections}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 flex items-center space-x-1.5 ${
+                        activeMode === 'collaborate'
+                          ? 'bg-gray-900 text-white shadow-sm'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50'
+                      }`}
+                    >
+                      {loadingConnections ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Users className="w-3.5 h-3.5" />
+                      )}
+                      <span>Colaborar</span>
+                      {activeMode === 'collaborate' && availableTargets.length > 1 && (
+                        <ChevronDown className="w-3 h-3" />
+                      )}
+                    </button>
+
+                    {/* Dropdown para selección de target */}
+                    {showTargetSelector && activeMode === 'collaborate' && availableTargets.length > 1 && (
+                      <div className="absolute bottom-full mb-2 left-0 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                        {availableTargets.map((target) => (
+                          <button
+                            key={target.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedTarget(target);
+                              setShowTargetSelector(false);
+                            }}
+                            className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                              selectedTarget?.id === target.id ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              {target.type === 'connected' ? (
+                                <Users className="w-4 h-4 text-blue-600" />
+                              ) : (
+                                <User className="w-4 h-4 text-gray-600" />
                               )}
-                              <div className="text-xs text-gray-400">
-                                {target.type === 'own' ? 'Tu MindOp' : 'Conectado'}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-gray-900 truncate">
+                                  {target.name}
+                                </div>
+                                {target.description && (
+                                  <div className="text-xs text-gray-500 truncate">
+                                    {target.description}
+                                  </div>
+                                )}
+                                <div className="text-xs text-gray-400">
+                                  {target.type === 'own' ? 'Tu MindOp' : 'Conectado'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Indicador de Target Actual */}
+                {activeMode === 'collaborate' && selectedTarget && (
+                  <div className="flex items-center space-x-1.5 px-2 py-1 bg-blue-50 border border-blue-200 rounded-full">
+                    {selectedTarget.type === 'connected' ? (
+                      <Users className="w-3 h-3 text-blue-600" />
+                    ) : (
+                      <User className="w-3 h-3 text-blue-600" />
+                    )}
+                    <span className="text-xs text-blue-900 font-medium max-w-24 truncate">
+                      {selectedTarget.name}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* Indicador de Target Actual */}
-              {activeMode === 'collaborate' && selectedTarget && (
-                <div className="flex items-center space-x-1.5 px-2 py-1 bg-blue-50 border border-blue-200 rounded-full">
-                  {selectedTarget.type === 'connected' ? (
-                    <Users className="w-3 h-3 text-blue-600" />
+              {/* Campo de Texto y Botón de Envío */}
+              <div className="flex items-end space-x-2">
+                <div className="flex-1">
+                  <textarea
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }
+                    }}
+                    placeholder={
+                      activeMode === 'collaborate' && selectedTarget?.type === 'connected'
+                        ? `Colaborar con ${selectedTarget.name}...`
+                        : "Escribe tu consulta aquí..."
+                    }
+                    rows={1}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent resize-none text-sm placeholder-gray-500"
+                    style={{ minHeight: '48px', maxHeight: '120px' }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isLoading || !inputText.trim()}
+                  className="flex items-center justify-center w-10 h-10 bg-gray-900 text-white rounded-full hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <User className="w-3 h-3 text-blue-600" />
+                    <PlaneTakeoff className="w-4 h-4" />
                   )}
-                  <span className="text-xs text-blue-900 font-medium max-w-24 truncate">
-                    {selectedTarget.name}
-                  </span>
+                </button>
+              </div>
+
+              {/* Indicador de Conexiones Disponibles */}
+              {!loadingConnections && connectedMindOps.length > 0 && activeMode === 'collaborate' && (
+                <div className="flex items-center justify-center pt-1">
+                  <div className="flex items-center px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full">
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></div>
+                    <span className="text-xs text-emerald-700 font-medium">
+                      {connectedMindOps.length} MindOp{connectedMindOps.length !== 1 ? 's' : ''} conectado{connectedMindOps.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
                 </div>
               )}
-            </div>
 
-            {/* Campo de Texto y Botón de Envío */}
-            <div className="flex items-end space-x-2">
-              <div className="flex-1">
-                <textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage(e);
-                    }
-                  }}
-                  placeholder={
-                    activeMode === 'collaborate' && selectedTarget?.type === 'connected'
-                      ? `Colaborar con ${selectedTarget.name}...`
-                      : "Escribe tu consulta aquí..."
-                  }
-                  rows={1}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent resize-none text-sm placeholder-gray-500"
-                  style={{ minHeight: '48px', maxHeight: '120px' }}
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isLoading || !inputText.trim()}
-                className="flex items-center justify-center w-10 h-10 bg-gray-900 text-white rounded-full hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <PlaneTakeoff className="w-4 h-4" />
-                )}
-              </button>
-            </div>            {/* Indicador de Conexiones Disponibles */}
-            {!loadingConnections && connectedMindOps.length > 0 && activeMode === 'collaborate' && (
-              <div className="flex items-center justify-center pt-1">
-                <div className="flex items-center px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full">
-                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></div>
-                  <span className="text-xs text-emerald-700 font-medium">
-                    {connectedMindOps.length} MindOp{connectedMindOps.length !== 1 ? 's' : ''} conectado{connectedMindOps.length !== 1 ? 's' : ''}
-                  </span>
+              {/* Debug: Indicador de Polling (solo en desarrollo) */}
+              {import.meta.env.DEV && pendingCollaborationTasks.size > 0 && (
+                <div className="flex items-center justify-center pt-1">
+                  <div className="flex items-center px-2 py-1 bg-yellow-50 border border-yellow-200 rounded-full">
+                    <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5 animate-pulse"></div>
+                    <span className="text-xs text-yellow-700 font-medium">
+                      Polling activo: {Array.from(pendingCollaborationTasks).length} tarea{pendingCollaborationTasks.size !== 1 ? 's' : ''}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Debug: Indicador de Polling (solo en desarrollo) */}
-            {import.meta.env.DEV && pendingCollaborationTasks.size > 0 && (
-              <div className="flex items-center justify-center pt-1">
-                <div className="flex items-center px-2 py-1 bg-yellow-50 border border-yellow-200 rounded-full">
-                  <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5 animate-pulse"></div>
-                  <span className="text-xs text-yellow-700 font-medium">
-                    Polling activo: {Array.from(pendingCollaborationTasks).length} tarea{pendingCollaborationTasks.size !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-            )}
-          </form></div>
+              )}
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   );

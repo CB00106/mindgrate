@@ -1,6 +1,31 @@
-# MindOps Frontend
+# MindOps - Intelligent Data Management Platform
 
-Una aplicación de frontend moderna construida con React, TypeScript, Vite, Tailwind CSS y Supabase.
+Una plataforma inteligente de gestión de datos construida con React, TypeScript, Vite, Tailwind CSS y Supabase. MindOps permite a los usuarios gestionar, analizar y colaborar con sus datos de manera conversacional.
+
+## ✨ Características Principales
+
+### 🧠 Chat Inteligente con IA
+- **Conversaciones persistentes**: Manejo completo de historial de conversaciones
+- **Interfaz tipo ChatGPT**: Sidebar con lista de conversaciones, búsqueda y gestión
+- **Múltiples conversaciones**: Crea, carga, elimina y cambia entre conversaciones
+- **Contexto inteligente**: Mantiene el contexto de cada conversación independientemente
+
+### 🤝 Sistema de Colaboración
+- **Colaboración entre MindOps**: Conecta y colabora con otros usuarios
+- **Consultas dirigidas**: Haz preguntas específicas a MindOps conectados
+- **Respuestas en tiempo real**: Sistema de polling para recibir respuestas automáticamente
+- **Notificaciones inteligentes**: Recibe alertas cuando hay respuestas disponibles
+
+### 💾 Gestión de Datos
+- **Carga de archivos CSV**: Importa y procesa datos automáticamente
+- **Análisis inteligente**: IA analiza patrones y tendencias en tus datos
+- **Búsqueda conversacional**: Haz preguntas en lenguaje natural sobre tus datos
+- **Visualización de resultados**: Tablas y resúmenes automáticos
+
+### 🔐 Autenticación y Seguridad
+- **Autenticación segura**: Sistema completo de registro y login
+- **Gestión de usuarios**: Perfiles de usuario y configuración de MindOps
+- **Privacidad de datos**: Cada usuario tiene acceso solo a sus datos
 
 ## 🚀 Tecnologías
 
