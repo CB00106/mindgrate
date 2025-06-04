@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useMindOp } from '@/hooks/useMindOp';
+import { useAuth } from '@/hooks/useAuth';
 import { CreateMindopData } from '@/types/mindops';
 import supabase from '@/services/supabaseClient';
 
@@ -14,7 +15,32 @@ interface FormErrors {
 }
 
 const MyMindOpPage: React.FC = () => {
-  const { mindop, loading: mindopLoading, error: mindopError, saveMindOp } = useMindOp();
+  // Render counter for debugging
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  
+  // Get auth context for session verification
+  const { user, session, loading: authLoading } = useAuth();
+  
+  const { mindop, loading: mindopLoading, error: mindopError, saveMindOp, refetch, retryCount } = useMindOp();
+  
+  // Component mount timestamp
+  const [mountTime] = useState(() => Date.now());
+  
+  // Debug logging for every render
+  console.log(`🎭 [MyMindOpPage] Render #${renderCountRef.current}`, {
+    timestamp: new Date().toISOString(),
+    componentMountTime: new Date(mountTime).toISOString(),
+    user: user ? { id: user.id, email: user.email } : null,
+    session: session ? { expires_at: session.expires_at } : null,
+    authLoading,
+    mindopLoading,
+    hasMindOp: !!mindop,
+    mindOpId: mindop?.id,
+    mindOpName: mindop?.mindop_name,
+    retryCount,
+    mindopError
+  });
     const [formData, setFormData] = useState<FormData>({
     mindop_name: '',
     mindop_description: '',
@@ -23,21 +49,55 @@ const MyMindOpPage: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
-  // CSV file handling
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);  // CSV file handling
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isVectorizing, setIsVectorizing] = useState(false);
   const [vectorizeMessage, setVectorizeMessage] = useState<string | null>(null);
+  
   // Pre-fill form when MindOp data is loaded
   useEffect(() => {
+    console.log('📝 [MyMindOpPage] MindOp data changed:', {
+      hasMindOp: !!mindop,
+      mindOpName: mindop?.mindop_name,
+      componentMountTime: mountTime
+    });
+    
     if (mindop) {
       setFormData({
         mindop_name: mindop.mindop_name || '',
         mindop_description: mindop.mindop_description || '',
       });
     }
-  }, [mindop]);
+  }, [mindop, mountTime]);  // Component mount effect with retry mechanism and session verification
+  useEffect(() => {
+    console.log('🎭 [MyMindOpPage] Component mounted/updated:', {
+      timestamp: new Date().toISOString(),
+      mountTime: new Date(mountTime).toISOString(),
+      hasUser: !!user,
+      userId: user?.id,
+      hasSession: !!session,
+      sessionValid: session?.expires_at ? new Date(session.expires_at * 1000) > new Date() : false,
+      authLoading,
+      mindopLoading,
+      hasMindOp: !!mindop,
+      retryCount
+    });
+    
+    // Verify session is valid before proceeding
+    if (session?.expires_at && new Date(session.expires_at * 1000) <= new Date()) {
+      console.warn('⚠️ [MyMindOpPage] Session expired, may cause HTTP 406 errors');
+    }
+    
+    // If we don't have mindop data after 5 seconds and not loading, try to refetch
+    const retryTimer = setTimeout(() => {
+      if (!mindop && !mindopLoading && retryCount < 3) {
+        console.log(`🔄 [MyMindOpPage] Retrying MindOp fetch due to missing data (attempt ${retryCount + 1}/3)`);
+        refetch();
+      }
+    }, 5000);
+
+    return () => clearTimeout(retryTimer);
+  }, [mindop, mindopLoading, retryCount, refetch, user, session, authLoading, mountTime]);
 
   // Clear messages after 5 seconds
   useEffect(() => {
@@ -239,8 +299,16 @@ const MyMindOpPage: React.FC = () => {
       formData.mindop_description !== (mindop.mindop_description || '')
     );
   };
-
   if (mindopLoading) {
+    console.log('⏳ [MyMindOpPage] Showing loading state:', {
+      mindopLoading,
+      authLoading,
+      retryCount,
+      hasUser: !!user,
+      hasSession: !!session,
+      renderCount: renderCountRef.current
+    });
+    
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="bg-white rounded-lg shadow-md p-8">
@@ -248,19 +316,50 @@ const MyMindOpPage: React.FC = () => {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
             <span className="ml-3 text-gray-600">Cargando configuración...</span>
           </div>
+          {/* Debug info for developers */}
+          <div className="mt-4 text-xs text-gray-400 text-center">
+            Render #{renderCountRef.current} | Retry: {retryCount}/3
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      {/* Header */}
+    <div className="max-w-4xl mx-auto p-6">      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Mi MindOp</h1>
-        <p className="text-gray-600">
-          Configura tu MindOp personal para optimizar tu flujo de trabajo
-        </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Mi MindOp</h1>
+            <p className="text-gray-600">
+              Configura tu MindOp personal para optimizar tu flujo de trabajo
+            </p>
+          </div>
+          
+          {/* Manual Refresh Button */}
+          <button
+            onClick={() => {
+              console.log('🔄 [MyMindOpPage] Manual refresh triggered');
+              refetch();
+            }}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-colors"
+            disabled={mindopLoading}
+          >
+            {mindopLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 mr-2 inline-block"></div>
+                Cargando...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Actualizar
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Status Messages */}

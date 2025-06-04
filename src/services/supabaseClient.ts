@@ -43,6 +43,25 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         }
       }
     }
+  },  // Fix para el error HTTP 406: Añadir headers específicos para garantizar aceptación de JSON
+  global: {
+    headers: {
+      'Accept': 'application/json, text/plain, */*',
+      'Content-Type': 'application/json',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Cache-Control': 'no-cache',
+      'X-Client-Info': 'mindgrate-web-client/1.0.0',
+      'Prefer': 'return=representation'
+    }
+  },
+  db: {
+    schema: 'public'
+  },
+  // Configuración adicional para evitar problemas con queries REST
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
 })
 
