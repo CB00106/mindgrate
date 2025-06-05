@@ -274,7 +274,7 @@ async function generateGeminiResponse(
 
   try {
     const genAI = new GoogleGenerativeAI(geminiApiKey)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" })
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
     
     const collaborationContext = isCollaboration 
       ? `\n\n🤝 **CONTEXTO DE COLABORACIÓN**: Estás respondiendo a una consulta de colaboración. Los datos provienen del MindOp "${mindopName}" que ha sido compartido contigo a través de una conexión aprobada. Responde como si fueras el asistente de ese MindOp compartiendo información con un colaborador autorizado.`

@@ -176,7 +176,7 @@ async function generateGeminiResponse(
     throw new Error('GEMINI_API_KEY not configured')
   }
   const genAI = new GoogleGenerativeAI(geminiApiKey)
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" })
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
   
   const prompt = `Eres un asistente inteligente especializado en colaboración entre MindOps.
 
