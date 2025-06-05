@@ -17,6 +17,23 @@ const handleSupabaseError = (error: any, queryId: string) => {
   return { isError: true, error };
 };
 
+// Función auxiliar para timeout de operaciones
+const withTimeout = <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  queryId: string
+): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => {
+        console.error(`⏱️ [${queryId}] Operation timeout after ${timeoutMs}ms`);
+        reject(new Error(`Operation timeout after ${timeoutMs}ms`));
+      }, timeoutMs)
+    ),
+  ]);
+};
+
 // Función auxiliar para retry con backoff exponencial
 const retryWithBackoff = async <T>(
   operation: () => Promise<T>,
@@ -27,11 +44,17 @@ const retryWithBackoff = async <T>(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`🔄 [${queryId}] Attempt ${attempt}/${maxRetries}`);
-      return await operation();
+      // Add 10 second timeout per attempt
+      const result = await withTimeout(operation(), 10000, queryId);
+      console.log(`✅ [${queryId}] Operation completed successfully on attempt ${attempt}`);
+      return result;
     } catch (error) {
+      console.warn(`⚠️ [${queryId}] Attempt ${attempt} failed:`, error);
+      
       const errorCheck = handleSupabaseError(error, queryId);
       
       if (errorCheck.isNoData) {
+        console.log(`ℹ️ [${queryId}] No data found, returning null`);
         return null as T;
       }
       
@@ -43,18 +66,18 @@ const retryWithBackoff = async <T>(
       }
       
       if (attempt === maxRetries) {
-        console.error(`❌ [${queryId}] Final attempt failed:`, error);
+        console.error(`❌ [${queryId}] Final attempt failed after ${maxRetries} retries:`, error);
         throw error;
       }
       
       // Para otros errores, no reintentar
       if (!errorCheck.isHttp406) {
+        console.error(`❌ [${queryId}] Non-retryable error:`, error);
         throw error;
       }
-    }
-  }
+    }  }
   
-  throw new Error(`Max retries exceeded for ${queryId}`);
+  throw new Error(`[${queryId}] All retry attempts exhausted`);
 };
 
 export class MindopService {
@@ -68,11 +91,18 @@ export class MindopService {
     const operation = async () => {
       try {
         // Estrategia 1: Array query primero (más confiable)
-        console.log(`🔄 [${queryId}] Trying array approach first...`);        const { data: arrayData, error: arrayError } = await supabase
+        console.log(`🔄 [${queryId}] Trying array approach first...`);
+        console.log(`🔄 [${queryId}] About to execute Supabase query...`);
+        
+        const { data: arrayData, error: arrayError } = await supabase
           .from('mindops')
           .select('id, user_id, mindop_name, mindop_description, created_at')
           .eq('user_id', userId)
           .limit(1);
+
+        console.log(`🔄 [${queryId}] Supabase query executed, processing results...`);
+        console.log(`🔄 [${queryId}] Array data:`, arrayData);
+        console.log(`🔄 [${queryId}] Array error:`, arrayError);
 
         if (arrayError) {
           console.warn(`⚠️ [${queryId}] Array approach failed:`, arrayError);
@@ -96,11 +126,16 @@ export class MindopService {
         console.warn(`⚠️ [${queryId}] Array approach failed, trying maybeSingle:`, firstError);
         
         // Estrategia 2: Fallback a maybeSingle
-        try {          const { data, error } = await supabase
+        try {
+          console.log(`🔄 [${queryId}] Trying maybeSingle approach...`);
+          
+          const { data, error } = await supabase
             .from('mindops')
             .select('id, user_id, mindop_name, mindop_description, created_at')
             .eq('user_id', userId)
             .maybeSingle();
+
+          console.log(`🔄 [${queryId}] maybeSingle executed:`, { data, error });
 
           if (error) {
             console.error(`❌ [${queryId}] maybeSingle also failed:`, error);

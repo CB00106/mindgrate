@@ -9,9 +9,8 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    // TODO: Implement Supabase authentication
-    console.log('Login attempt:', { email, password });
+      // TODO: Implement Supabase authentication
+    console.log('Login attempt:', { email, password: '[REDACTED]' });
     
     // Simulate API call
     setTimeout(() => {

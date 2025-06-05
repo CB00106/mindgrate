@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  initialized: boolean;
   userMindOpId: string | null;
   signIn: (email: string, password: string) => Promise<AuthResponse>;
   signUp: (email: string, password: string, options?: SignUpOptions) => Promise<AuthResponse>;
@@ -31,29 +32,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
   const [userMindOpId, setUserMindOpId] = useState<string | null>(null);  // Function to fetch user's MindOp ID
   const fetchUserMindOpId = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      console.log('🔄 [AuthContext] Fetching MindOp for user:', userId);
+        const query = supabase
         .from('mindops')
         .select('id')
         .eq('user_id', userId)
         .single();
+      
+      // Note: Supabase client doesn't support AbortSignal directly on queries
+      // The AbortController is managed at the component level
+      const { data, error } = await query;
 
       if (error) {
         if (error.code === 'PGRST116') {
           // No rows returned - user doesn't have a MindOp yet
+          console.log('ℹ️ [AuthContext] User has no MindOp yet');
           setUserMindOpId(null);
         } else {
-          console.error('Error fetching user MindOp:', error);
+          console.error('❌ [AuthContext] Error fetching user MindOp:', error);
           setUserMindOpId(null);
         }
         return;
       }
 
-      setUserMindOpId(data?.id || null);
-    } catch (error) {
-      console.error('Unexpected error fetching user MindOp:', error);
+      const mindOpId = data?.id || null;
+      console.log('✅ [AuthContext] MindOp ID fetched:', mindOpId);
+      setUserMindOpId(mindOpId);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('🔄 [AuthContext] MindOp fetch aborted');
+        return;
+      }
+      console.error('❌ [AuthContext] Unexpected error fetching user MindOp:', error);
       setUserMindOpId(null);
     }
   };
@@ -63,121 +77,167 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (user?.id) {
       await fetchUserMindOpId(user.id);
     }
-  };  useEffect(() => {
-    // Get initial session - optimized for autoRefreshToken: false
-    const getInitialSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error getting session:', error);
-          // Only clear user if there's an actual error, not during loading
-          setSession(null);
-          setUser(null);
-          setUserMindOpId(null);
-        } else {
-          // Con autoRefreshToken: false, confiamos en la sesión guardada
-          setSession(session);
-          
-          // CRITICAL: Only update user if we actually have a different state
-          if (session?.user) {
-            setUser(session.user);
-            
-            // Fetch user's MindOp ID if user is authenticated
-            try {
-              await fetchUserMindOpId(session.user.id);
-            } catch (mindOpError) {
-              console.error('Error fetching MindOp ID during initialization:', mindOpError);
-              setUserMindOpId(null);
-            }
-          } else if (!session) {
-            // Only clear user when we're certain there's no session
-            setUser(null);
-            setUserMindOpId(null);
-          }
-          // If session is null but we had a user, keep the user during verification
-        }
-      } catch (error) {
-        console.error('Unexpected error during session initialization:', error);
-        // Only clear states on actual errors, not during normal loading
-        setSession(null);
-        setUser(null);
-        setUserMindOpId(null);
-      } finally {
-        // CRITICAL: Always set loading to false after initial check
-        setLoading(false);
-      }
-    };    // Setup auth state change listener - optimized for fewer events
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    let isProcessingAuth = false;
+    let mindOpAbortController: AbortController | null = null;
+
+    // SINGLE SOURCE OF TRUTH: Use only onAuthStateChange for all auth state management
+    // This eliminates the race condition between getSession() and INITIAL_SESSION event
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log(`🔄 [AuthContext] Auth event: ${event}`);
+        if (!mounted) return;
         
-        // Con autoRefreshToken: false, solo escuchamos eventos importantes
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
-          try {
-            setSession(session);
-            
-            // Handle different auth events with conservative user state management
-            if (event === 'SIGNED_OUT') {
-              setUser(null);
-              setUserMindOpId(null);
-            } else if (event === 'SIGNED_IN' && session?.user) {
-              // Definitely signed in - update user
-              setUser(session.user);
-              try {
-                await fetchUserMindOpId(session.user.id);
-              } catch (mindOpError) {
-                console.error(`Error fetching MindOp ID for event ${event}:`, mindOpError);
-                setUserMindOpId(null);
+        // Prevent concurrent auth processing
+        if (isProcessingAuth) {
+          console.log(`🔄 [AuthContext] Already processing auth, skipping ${event}`);
+          return;
+        }
+        
+        isProcessingAuth = true;
+
+        // Abort any ongoing MindOp fetch
+        if (mindOpAbortController) {
+          mindOpAbortController.abort();
+        }
+
+        console.log(`🔄 [AuthContext] Auth event: ${event}`, { hasSession: !!session, hasUser: !!session?.user });
+        
+        try {
+          // Handle all auth events in a unified way
+          switch (event) {
+            case 'INITIAL_SESSION':
+              console.log('🔄 [AuthContext] Processing INITIAL_SESSION event');
+              await handleAuthState(session, 'INITIAL_SESSION');
+              break;
+              
+            case 'SIGNED_IN':
+              console.log('🔄 [AuthContext] Processing SIGNED_IN event');
+              await handleAuthState(session, 'SIGNED_IN');
+              break;
+              
+            case 'SIGNED_OUT':
+              console.log('🔄 [AuthContext] Processing SIGNED_OUT event');
+              handleSignOut();
+              break;
+              
+            case 'TOKEN_REFRESHED':
+              console.log('🔄 [AuthContext] Processing TOKEN_REFRESHED event');
+              // For token refresh, just update session without fetching MindOp again
+              if (mounted) {
+                setSession(session);
+                setUser(session?.user ?? null);
               }
-            } else if (event === 'INITIAL_SESSION') {
-              // Be conservative with INITIAL_SESSION - only update if we have clear state
-              if (session?.user) {
-                setUser(session.user);
-                try {
-                  await fetchUserMindOpId(session.user.id);
-                } catch (mindOpError) {
-                  console.error(`Error fetching MindOp ID for event ${event}:`, mindOpError);
-                  setUserMindOpId(null);
-                }
-              } else if (!session) {
-                // Only clear user if we're certain there's no session
-                setUser(null);
-                setUserMindOpId(null);
+              console.log('✅ [AuthContext] TOKEN_REFRESHED processed');
+              break;
+              
+            case 'USER_UPDATED':
+              console.log('🔄 [AuthContext] Processing USER_UPDATED event');
+              if (mounted) {
+                setSession(session);
+                setUser(session?.user ?? null);
               }
-              // If session exists but no user, keep existing user state during verification
-            }
-          } catch (error) {
-            console.error('Error during auth state change processing:', error);
-            // Only clear states on actual errors, not during normal processing
-            if (event === 'SIGNED_OUT') {
-              setSession(null);
-              setUser(null);
-              setUserMindOpId(null);
-            }
-          } finally {
-            // CRITICAL FIX: Always ensure loading is false after any auth event
+              console.log('✅ [AuthContext] USER_UPDATED processed');
+              break;
+          }
+        } catch (error) {
+          console.error(`❌ [AuthContext] Error processing ${event}:`, error);
+          if (mounted) {
+            setInitialized(true);
             setLoading(false);
           }
+        } finally {
+          isProcessingAuth = false;
         }
-        // Ignoramos TOKEN_REFRESHED ya que autoRefreshToken está deshabilitado
       }
     );
 
-    // Start the initial session fetch
-    getInitialSession();
+    // Unified auth state handler
+    const handleAuthState = async (session: Session | null, eventType: string) => {
+      if (!mounted) return;
+      
+      try {
+        // Update basic auth state
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Fetch MindOp ID if user exists
+        if (session?.user) {
+          console.log(`🔄 [AuthContext] Fetching MindOp ID for ${eventType}`);
+          
+          // Create new abort controller for this fetch
+          mindOpAbortController = new AbortController();
+            try {
+            await fetchUserMindOpId(session.user.id);
+            console.log(`✅ [AuthContext] MindOp ID fetched successfully for ${eventType}`);
+          } catch (mindOpError: any) {
+            if (mindOpError.name !== 'AbortError') {
+              console.error(`❌ [AuthContext] Error fetching MindOp ID for ${eventType}:`, mindOpError);
+              setUserMindOpId(null);
+            }
+          }
+        } else {
+          console.log(`🔄 [AuthContext] No user in ${eventType}, setting MindOp ID to null`);
+          setUserMindOpId(null);
+        }
+        
+        // Mark initialization complete
+        setInitialized(true);
+        setLoading(false);
+        console.log(`✅ [AuthContext] ${eventType} processing completed`);
+      } catch (error) {
+        console.error(`❌ [AuthContext] Error in handleAuthState for ${eventType}:`, error);
+        if (mounted) {
+          setUserMindOpId(null);
+          setInitialized(true);
+          setLoading(false);
+        }
+      }
+    };
 
-    // SAFETY NET: Force loading to false after 10 seconds to prevent infinite loading
-    const loadingTimeout = setTimeout(() => {
+    // Sign out handler
+    const handleSignOut = () => {
+      if (!mounted) return;
+      
+      // Abort any ongoing MindOp fetch
+      if (mindOpAbortController) {
+        mindOpAbortController.abort();
+        mindOpAbortController = null;
+      }
+      
+      setSession(null);
+      setUser(null);
+      setUserMindOpId(null);
       setLoading(false);
-    }, 10000);
+      console.log('✅ [AuthContext] SIGNED_OUT processed');
+    };
 
-    // Cleanup function
+    // Safety timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (mounted && loading && !initialized) {
+        console.warn('🔄 [AuthContext] Auth initialization timeout, forcing loading to false');
+        setInitialized(true);
+        setLoading(false);
+      }
+    }, 10000); // 10 seconds timeout
+
     return () => {
-      clearTimeout(loadingTimeout);
+      mounted = false;
+      isProcessingAuth = false;
+      
+      // Abort any ongoing MindOp fetch
+      if (mindOpAbortController) {
+        mindOpAbortController.abort();
+      }
+      
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
-  }, []);  const signIn = async (email: string, password: string) => {
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
       
@@ -255,10 +315,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(false);
     return { error: result.error };
   };
+
   const value: AuthContextType = {
     user,
     session,
     loading,
+    initialized,
     userMindOpId,
     signIn,
     signUp,

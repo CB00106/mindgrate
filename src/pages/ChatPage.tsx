@@ -67,7 +67,7 @@ interface StoredMessage {
 }
 
 const ChatPage: React.FC = () => {
-  const { user, userMindOpId } = useAuth();
+  const { user, userMindOpId, loading } = useAuth();
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [requestInProgress, setRequestInProgress] = useState<string | null>(null);
@@ -168,16 +168,39 @@ Puedes preguntarme sobre:
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showTargetSelector]);
-
-  // Cargar conexiones del usuario al montar el componente
+  }, [showTargetSelector]);  // Cargar conexiones del usuario al montar el componente
   useEffect(() => {
-    if (userMindOpId) {
-      loadUserConnections();
-      initializeCollaborationTargets();
-      loadConversationList();
-    }
-  }, [userMindOpId]);
+    const initializePageData = async () => {
+      // CRITICAL: Wait for auth to be fully stabilized
+      // Don't proceed until loading is false AND we have checked for userMindOpId
+      if (loading) {
+        console.log('🔄 [ChatPage] Auth still loading, waiting...', { loading, userMindOpId });
+        return;
+      }
+
+      // At this point, auth is stable - user may or may not have a MindOp
+      if (!userMindOpId) {
+        console.log('ℹ️ [ChatPage] User has no MindOp yet, skipping data initialization');
+        return;
+      }
+
+      console.log('✅ [ChatPage] Auth stabilized with MindOp, initializing page data...', { userMindOpId });
+
+      try {
+        console.log('🔄 [ChatPage] Initializing page data...');
+        await Promise.all([
+          loadUserConnections(),
+          initializeCollaborationTargets(),
+          loadConversationList()
+        ]);
+        console.log('✅ [ChatPage] Page data initialized successfully');
+      } catch (error) {
+        console.error('❌ [ChatPage] Error initializing page data:', error);
+      }
+    };
+
+    initializePageData();
+  }, [userMindOpId, loading]); // Agregar loading como dependencia
 
   // Inicializar targets disponibles cuando cambian las conexiones
   useEffect(() => {

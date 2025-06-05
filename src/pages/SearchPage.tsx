@@ -27,15 +27,20 @@ interface FollowRequestError {
 }
 
 const SearchPage: React.FC = () => {
-  const { userMindOpId } = useAuth();
+  const { userMindOpId, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<MindopSearchResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [followRequestStates, setFollowRequestStates] = useState<FollowRequestState>({});
-  const [followRequestErrors, setFollowRequestErrors] = useState<FollowRequestError>({});
-  const callSearchService = async (searchTerm: string): Promise<SearchResponse> => {
+  const [followRequestErrors, setFollowRequestErrors] = useState<FollowRequestError>({});  const callSearchService = async (searchTerm: string): Promise<SearchResponse> => {
+    // CRITICAL: Wait for auth to stabilize before making search requests
+    if (authLoading) {
+      console.log('🔄 [SearchPage] Waiting for auth stabilization before search...');
+      throw new Error('Autenticación en proceso, intenta de nuevo en un momento');
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     
     console.log('🔐 Sesión actual:', !!session);
@@ -103,8 +108,17 @@ const SearchPage: React.FC = () => {
     } finally {
       setIsSearching(false);
     }
-  };
-  const handleRequestFollow = async (targetMindOpId: string) => {
+  };  const handleRequestFollow = async (targetMindOpId: string) => {
+    // CRITICAL: Wait for auth to stabilize before making follow requests
+    if (authLoading) {
+      console.log('🔄 [SearchPage] Waiting for auth stabilization before follow request...');
+      setFollowRequestErrors({
+        ...followRequestErrors,
+        [targetMindOpId]: 'Autenticación en proceso, intenta de nuevo en un momento'
+      });
+      return;
+    }
+
     // Validación: verificar que el usuario tenga su propio MindOp
     if (!userMindOpId) {
       setFollowRequestErrors({

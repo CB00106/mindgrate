@@ -12,7 +12,7 @@ interface ActionError {
 }
 
 const NotificationsPage: React.FC = () => {
-  const { userMindOpId } = useAuth();
+  const { userMindOpId, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'follow_requests' | 'connections'>('all');
   const [notifications, setNotifications] = useState<ProcessedNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,22 +26,38 @@ const NotificationsPage: React.FC = () => {
   const [followers, setFollowers] = useState<any[]>([]);
   const [connectionsLoading, setConnectionsLoading] = useState(false);
   const [connectionActionStates, setConnectionActionStates] = useState<ActionState>({});
-  const [connectionActionErrors, setConnectionActionErrors] = useState<ActionError>({});
-  // Cargar notificaciones al montar el componente
+  const [connectionActionErrors, setConnectionActionErrors] = useState<ActionError>({});  // Cargar notificaciones al montar el componente
   useEffect(() => {
+    // CRITICAL: Wait for auth to stabilize before loading notifications
+    if (authLoading) {
+      console.log('🔄 [NotificationsPage] Waiting for auth stabilization before loading notifications...');
+      return;
+    }
+
     if (userMindOpId) {
       loadNotifications();
     }
-  }, [userMindOpId]);
+  }, [userMindOpId, authLoading]); // Add authLoading as dependency
 
   // Cargar conexiones cuando se cambia al tab de conexiones
   useEffect(() => {
+    // CRITICAL: Wait for auth to stabilize before loading connections
+    if (authLoading) {
+      console.log('🔄 [NotificationsPage] Waiting for auth stabilization before loading connections...');
+      return;
+    }
+
     if (userMindOpId && activeTab === 'connections') {
       loadConnections();
     }
-  }, [userMindOpId, activeTab]);
-
+  }, [userMindOpId, activeTab, authLoading]); // Add authLoading as dependency
   const loadNotifications = async () => {
+    // CRITICAL: Wait for auth to stabilize before loading notifications
+    if (authLoading) {
+      console.log('🔄 [NotificationsPage] Auth still loading, cannot load notifications');
+      return;
+    }
+
     if (!userMindOpId) {
       setError('No se encontró tu MindOp. Asegúrate de tener un MindOp configurado.');
       setLoading(false);
@@ -60,8 +76,13 @@ const NotificationsPage: React.FC = () => {
       setLoading(false);
     }
   };
-
   const loadConnections = async () => {
+    // CRITICAL: Wait for auth to stabilize before loading connections
+    if (authLoading) {
+      console.log('🔄 [NotificationsPage] Auth still loading, cannot load connections');
+      return;
+    }
+
     if (!userMindOpId) return;
 
     try {
@@ -110,8 +131,17 @@ const NotificationsPage: React.FC = () => {
       prev.map(notification => ({ ...notification, isRead: true }))
     );
   };
-
   const handleAcceptRequest = async (notificationId: string, followRequestId: string) => {
+    // CRITICAL: Wait for auth to stabilize before accepting follow requests
+    if (authLoading) {
+      console.log('🔄 [NotificationsPage] Auth still loading, cannot accept follow request');
+      setActionErrors(prev => ({ 
+        ...prev, 
+        [notificationId]: 'Autenticación en proceso, intenta de nuevo en un momento' 
+      }));
+      return;
+    }
+
     setActionStates(prev => ({ ...prev, [notificationId]: 'loading' }));
     setActionErrors(prev => ({ ...prev, [notificationId]: '' }));
 
@@ -142,8 +172,17 @@ const NotificationsPage: React.FC = () => {
         [notificationId]: 'Error interno al procesar la solicitud' 
       }));
     }
-  };
-  const handleRejectRequest = async (notificationId: string, followRequestId: string) => {
+  };  const handleRejectRequest = async (notificationId: string, followRequestId: string) => {
+    // CRITICAL: Wait for auth to stabilize before rejecting follow requests
+    if (authLoading) {
+      console.log('🔄 [NotificationsPage] Auth still loading, cannot reject follow request');
+      setActionErrors(prev => ({ 
+        ...prev, 
+        [notificationId]: 'Autenticación en proceso, intenta de nuevo en un momento' 
+      }));
+      return;
+    }
+
     setActionStates(prev => ({ ...prev, [notificationId]: 'loading' }));
     setActionErrors(prev => ({ ...prev, [notificationId]: '' }));
 
@@ -175,6 +214,17 @@ const NotificationsPage: React.FC = () => {
       }));
     }
   };  const handleUnfollowMindOp = async (targetMindOpId: string) => {
+    // CRITICAL: Wait for auth to stabilize before unfollowing
+    if (authLoading) {
+      console.log('🔄 [NotificationsPage] Auth still loading, cannot unfollow MindOp');
+      const actionKey = `unfollow-${targetMindOpId}`;
+      setConnectionActionErrors(prev => ({ 
+        ...prev, 
+        [actionKey]: 'Autenticación en proceso, intenta de nuevo en un momento' 
+      }));
+      return;
+    }
+
     if (!userMindOpId) {
       console.warn('⚠️ handleUnfollowMindOp: userMindOpId no disponible');
       return;
@@ -220,8 +270,18 @@ const NotificationsPage: React.FC = () => {
         [actionKey]: 'Error interno al procesar la solicitud' 
       }));
     }
-  };
-  const handleRemoveFollower = async (followerMindOpId: string) => {
+  };  const handleRemoveFollower = async (followerMindOpId: string) => {
+    // CRITICAL: Wait for auth to stabilize before removing follower
+    if (authLoading) {
+      console.log('🔄 [NotificationsPage] Auth still loading, cannot remove follower');
+      const actionKey = `remove-${followerMindOpId}`;
+      setConnectionActionErrors(prev => ({ 
+        ...prev, 
+        [actionKey]: 'Autenticación en proceso, intenta de nuevo en un momento' 
+      }));
+      return;
+    }
+
     if (!userMindOpId) {
       console.warn('⚠️ handleRemoveFollower: userMindOpId no disponible');
       return;
