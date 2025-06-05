@@ -70,6 +70,7 @@ const ChatPage: React.FC = () => {
   const { user, userMindOpId } = useAuth();
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [requestInProgress, setRequestInProgress] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<'mindop' | 'collaborate'>('mindop');
   
   // Estados para colaboración dirigida
@@ -402,12 +403,14 @@ Puedes preguntarme sobre:
     } catch (error) {
       console.error('❌ Error inesperado actualizando estado de tarea:', error);
     }
-  };
-  const callMindOpService = async (query: string): Promise<any> => {
+  };  const callMindOpService = async (query: string, requestId?: string): Promise<any> => {
+    const reqId = requestId || `call_${Date.now()}`;
+    console.log(`🔐 [${reqId}] Getting session...`);
+    
     const { data: { session } } = await supabase.auth.getSession();
     
-    console.log('🔐 Sesión activa:', !!session);
-    console.log('🔑 Token disponible:', !!session?.access_token);
+    console.log(`🔐 [${reqId}] Sesión activa:`, !!session);
+    console.log(`🔑 [${reqId}] Token disponible:`, !!session?.access_token);
     
     if (!session?.access_token) {
       throw new Error('No hay sesión activa');
@@ -423,43 +426,74 @@ Puedes preguntarme sobre:
     // Agregar conversation_id si existe una conversación activa
     if (currentConversationId) {
       payload.conversation_id = currentConversationId;
-      console.log('💬 Conversación activa:', currentConversationId);
+      console.log(`💬 [${reqId}] Conversación activa:`, currentConversationId);
+    } else {
+      console.log(`🆕 [${reqId}] Nueva conversación`);
     }
     
     if (activeMode === 'collaborate' && selectedTarget && selectedTarget.type === 'connected') {
       payload.target_mindop_id = selectedTarget.id;
-      console.log('🤝 Modo colaboración activado, target:', selectedTarget.name, selectedTarget.id);
+      console.log(`🤝 [${reqId}] Modo colaboración activado, target:`, selectedTarget.name, selectedTarget.id);
     }
 
-    console.log('📞 Llamando a mindop-service con payload:', payload);
+    console.log(`📞 [${reqId}] Llamando a mindop-service con payload:`, payload);
     
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mindop-service`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify(payload),
-    });
+    // Configurar timeout de 60 segundos
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error(`⏰ [${reqId}] Request timeout después de 60 segundos`);
+      controller.abort();
+    }, 60000);
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mindop-service`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
 
-    console.log('📊 Response status:', response.status)
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-      console.error('❌ Error response:', errorData);
-      // Arrojar error con detalle de stack si existe
-      const message = errorData.error || `Error ${response.status}`;
-      const stack = errorData.stack ? `\nStack trace: ${errorData.stack}` : '';
-      throw new Error(message + stack);
+      clearTimeout(timeoutId);
+      console.log(`📊 [${reqId}] Response status:`, response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        console.error(`❌ [${reqId}] Error response:`, errorData);
+        const message = errorData.error || `Error ${response.status}`;
+        const stack = errorData.stack ? `\nStack trace: ${errorData.stack}` : '';
+        throw new Error(message + stack);
+      }
+
+      const result = await response.json();
+      console.log(`✅ [${reqId}] Success response:`, result);
+      
+      return result;    } catch (error) {
+      clearTimeout(timeoutId);
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error(`⏰ [${reqId}] Request fue abortado por timeout`);
+        throw new Error('La consulta tardó demasiado tiempo. Por favor, intenta nuevamente.');
+      }
+      
+      console.error(`💥 [${reqId}] Error en fetch:`, error);
+      throw error;
     }
-
-    const result = await response.json();
-    console.log('✅ Success response:', result);
-    
-    return result;
-  };
-  const handleSendMessage = async (e: React.FormEvent) => {
+  };  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || isLoading) return;
+
+    // Generar Request ID único para tracking
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`🚀 [${requestId}] Iniciando request: "${inputText.substring(0, 50)}..."`);
+    
+    // Protección contra múltiples requests simultáneos
+    if (requestInProgress) {
+      console.warn(`⚠️ [${requestId}] Request ya en progreso: ${requestInProgress}. Ignorando nueva request.`);
+      return;
+    }
 
     const userMessage: ConversationMessage = {
       id: Date.now(),
@@ -472,9 +506,16 @@ Puedes preguntarme sobre:
     const originalQuery = inputText;
     setInputText('');
     setIsLoading(true);
+    setRequestInProgress(requestId);
 
     try {
-      const response = await callMindOpService(originalQuery);
+      console.log(`⏳ [${requestId}] Calling MindOp service...`);
+      const startTime = Date.now();
+      
+      const response = await callMindOpService(originalQuery, requestId);
+      
+      const duration = Date.now() - startTime;
+      console.log(`✅ [${requestId}] Response received in ${duration}ms`);
       
       if (response.success && response.response) {
         const systemMessage: ConversationMessage = {
@@ -483,9 +524,11 @@ Puedes preguntarme sobre:
           content: response.response,
           timestamp: new Date(),
         };
-        setConversation(prev => [...prev, systemMessage]);        // Update conversation ID if backend created a new conversation
+        setConversation(prev => [...prev, systemMessage]);
+        
+        // Update conversation ID if backend created a new conversation
         if (response.conversation_id && response.conversation_id !== currentConversationId) {
-          console.log('🆕 Nueva conversación creada por backend:', response.conversation_id);
+          console.log(`🆕 [${requestId}] Nueva conversación creada: ${response.conversation_id}`);
           setCurrentConversationId(response.conversation_id);
           // Refresh conversation list to show the new conversation
           loadConversationList();
@@ -493,12 +536,12 @@ Puedes preguntarme sobre:
 
         // Log conversation history usage
         if (response.history_messages_used > 0) {
-          console.log(`💬 Se utilizaron ${response.history_messages_used} mensajes del historial como contexto`);
+          console.log(`💬 [${requestId}] Se utilizaron ${response.history_messages_used} mensajes del historial`);
         }
 
         // Si es una respuesta de colaboración y contiene collaboration_task_id, agregarlo a tareas pendientes
         if (response.collaboration_task_id) {
-          console.log('📝 Nueva tarea de colaboración creada:', response.collaboration_task_id);
+          console.log(`📝 [${requestId}] Nueva tarea de colaboración: ${response.collaboration_task_id}`);
           setPendingCollaborationTasks(prev => new Set([...prev, response.collaboration_task_id]));
           
           // Mostrar mensaje informativo sobre el estado de la colaboración
@@ -512,6 +555,7 @@ Puedes preguntarme sobre:
           setConversation(prev => [...prev, collaborationStatusMessage]);
         }
       } else {
+        console.error(`❌ [${requestId}] Response error:`, response.error);
         const errorMessage: ConversationMessage = {
           id: Date.now() + 1,
           type: 'error',
@@ -521,7 +565,7 @@ Puedes preguntarme sobre:
         setConversation(prev => [...prev, errorMessage]);
       }
     } catch (error) {
-      console.error('🔴 Caught error in handleSendMessage:', error);
+      console.error(`💥 [${requestId}] Caught error:`, error);
       const errorMessage: ConversationMessage = {
         id: Date.now() + 1,
         type: 'error',
@@ -531,7 +575,9 @@ Puedes preguntarme sobre:
       };
       setConversation(prev => [...prev, errorMessage]);
     } finally {
+      console.log(`🏁 [${requestId}] Request completed, clearing states`);
       setIsLoading(false);
+      setRequestInProgress(null);
     }
   };
 

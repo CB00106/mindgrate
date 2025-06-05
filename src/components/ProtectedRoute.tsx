@@ -15,6 +15,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -30,6 +31,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // Redirect to auth page but remember where they were trying to go
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
+
   if (!requireAuth && user) {
     // If user is authenticated but trying to access auth pages, redirect to chat
     return <Navigate to="/chat" replace />;
