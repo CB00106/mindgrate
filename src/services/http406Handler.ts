@@ -69,7 +69,7 @@ export class Http406Handler {
       }
       
       const singleResult = arrayResult.data[0];
-      console.log(`✅ [Http406Handler] Safe single successful:`, { id: singleResult?.id });
+      console.log(`✅ [Http406Handler] Safe single successful:`, { result: singleResult });
       return { data: singleResult, error: null };
       
     } catch (error) {
