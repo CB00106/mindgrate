@@ -12,7 +12,6 @@ import {
   ProfilePage, 
   NotFound 
 } from '@/pages';
-import MindopServiceTestPage from '@/pages/MindopServiceTestPage';
 
 export const router = createBrowserRouter([
   {
@@ -83,15 +82,7 @@ export const router = createBrowserRouter([
           <ProtectedRoute>
             <ProfilePage />
           </ProtectedRoute>
-        ),
-      },      {
-        path: 'mindop-test',
-        element: (
-          <ProtectedRoute>
-            <MindopServiceTestPage />
-          </ProtectedRoute>
-        ),
-      },      {
+        ),      },      {
         path: 'auth-debug',
         element: <AuthDebugger />,
       },
