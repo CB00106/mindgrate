@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMindOp } from '@/hooks/useMindOp';
-import { useAuth } from '@/hooks/useAuth';
 import { CreateMindopData } from '@/types/mindops';
 import supabase from '@/services/supabaseClient';
 
@@ -15,33 +14,9 @@ interface FormErrors {
 }
 
 const MyMindOpPage: React.FC = () => {
-  // Render counter for debugging
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
+  const { mindop, loading: mindopLoading, error: mindopError, saveMindOp, refetch, retryCount, isStale } = useMindOp();
   
-  // Get auth context for session verification
-  const { user, session, loading: authLoading } = useAuth();
-  
-  const { mindop, loading: mindopLoading, error: mindopError, saveMindOp, refetch, retryCount } = useMindOp();
-  
-  // Component mount timestamp
-  const [mountTime] = useState(() => Date.now());
-  
-  // Debug logging for every render
-  console.log(`🎭 [MyMindOpPage] Render #${renderCountRef.current}`, {
-    timestamp: new Date().toISOString(),
-    componentMountTime: new Date(mountTime).toISOString(),
-    user: user ? { id: user.id, email: user.email } : null,
-    session: session ? { expires_at: session.expires_at } : null,
-    authLoading,
-    mindopLoading,
-    hasMindOp: !!mindop,
-    mindOpId: mindop?.id,
-    mindOpName: mindop?.mindop_name,
-    retryCount,
-    mindopError
-  });
-    const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<FormData>({
     mindop_name: '',
     mindop_description: '',
   });
@@ -53,51 +28,15 @@ const MyMindOpPage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isVectorizing, setIsVectorizing] = useState(false);
   const [vectorizeMessage, setVectorizeMessage] = useState<string | null>(null);
-  
   // Pre-fill form when MindOp data is loaded
   useEffect(() => {
-    console.log('📝 [MyMindOpPage] MindOp data changed:', {
-      hasMindOp: !!mindop,
-      mindOpName: mindop?.mindop_name,
-      componentMountTime: mountTime
-    });
-    
     if (mindop) {
       setFormData({
         mindop_name: mindop.mindop_name || '',
         mindop_description: mindop.mindop_description || '',
       });
     }
-  }, [mindop, mountTime]);  // Component mount effect with retry mechanism and session verification
-  useEffect(() => {
-    console.log('🎭 [MyMindOpPage] Component mounted/updated:', {
-      timestamp: new Date().toISOString(),
-      mountTime: new Date(mountTime).toISOString(),
-      hasUser: !!user,
-      userId: user?.id,
-      hasSession: !!session,
-      sessionValid: session?.expires_at ? new Date(session.expires_at * 1000) > new Date() : false,
-      authLoading,
-      mindopLoading,
-      hasMindOp: !!mindop,
-      retryCount
-    });
-    
-    // Verify session is valid before proceeding
-    if (session?.expires_at && new Date(session.expires_at * 1000) <= new Date()) {
-      console.warn('⚠️ [MyMindOpPage] Session expired, may cause HTTP 406 errors');
-    }
-    
-    // If we don't have mindop data after 5 seconds and not loading, try to refetch
-    const retryTimer = setTimeout(() => {
-      if (!mindop && !mindopLoading && retryCount < 3) {
-        console.log(`🔄 [MyMindOpPage] Retrying MindOp fetch due to missing data (attempt ${retryCount + 1}/3)`);
-        refetch();
-      }
-    }, 5000);
-
-    return () => clearTimeout(retryTimer);
-  }, [mindop, mindopLoading, retryCount, refetch, user, session, authLoading, mountTime]);
+  }, [mindop]);
 
   // Clear messages after 5 seconds
   useEffect(() => {
@@ -298,17 +237,8 @@ const MyMindOpPage: React.FC = () => {
       formData.mindop_name !== (mindop.mindop_name || '') ||
       formData.mindop_description !== (mindop.mindop_description || '')
     );
-  };
+  };  // Show loading state only when actually loading
   if (mindopLoading) {
-    console.log('⏳ [MyMindOpPage] Showing loading state:', {
-      mindopLoading,
-      authLoading,
-      retryCount,
-      hasUser: !!user,
-      hasSession: !!session,
-      renderCount: renderCountRef.current
-    });
-    
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="bg-white rounded-lg shadow-md p-8">
@@ -316,9 +246,45 @@ const MyMindOpPage: React.FC = () => {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
             <span className="ml-3 text-gray-600">Cargando configuración...</span>
           </div>
-          {/* Debug info for developers */}
-          <div className="mt-4 text-xs text-gray-400 text-center">
-            Render #{renderCountRef.current} | Retry: {retryCount}/3
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state with retry button when there's an error
+  if (mindopError) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-white rounded-lg shadow-md p-8">
+          <div className="text-center">
+            <div className="mb-4">
+              <span className="text-red-600 text-4xl">⚠️</span>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">
+              Error al cargar la configuración
+            </h2>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              {mindopError}
+            </p>
+            <div className="space-x-3">
+              <button
+                onClick={() => refetch()}
+                className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-colors font-medium"
+              >
+                Reintentar
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors font-medium"
+              >
+                Recargar página
+              </button>
+            </div>
+            {retryCount > 0 && (
+              <p className="text-sm text-gray-500 mt-4">
+                Intentos realizados: {retryCount}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -335,11 +301,9 @@ const MyMindOpPage: React.FC = () => {
               Configura tu MindOp personal para optimizar tu flujo de trabajo
             </p>
           </div>
-          
-          {/* Manual Refresh Button */}
+            {/* Manual Refresh Button */}
           <button
             onClick={() => {
-              console.log('🔄 [MyMindOpPage] Manual refresh triggered');
               refetch();
             }}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-colors"
@@ -359,8 +323,24 @@ const MyMindOpPage: React.FC = () => {
               </>
             )}
           </button>
+        </div>      </div>
+
+      {/* Stale Data Indicator */}
+      {isStale && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <span className="text-amber-600 text-lg">📱</span>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-800">
+                <span className="font-medium">Datos guardados localmente.</span> 
+                {' '}La configuración se está actualizando en segundo plano.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Status Messages */}
       {successMessage && (
