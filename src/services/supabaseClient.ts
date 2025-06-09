@@ -9,9 +9,29 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
+// Verificación de consistencia de storage en desarrollo
+const checkStorageConsistency = () => {
+  if (typeof window !== 'undefined' && localStorage) {
+    const keys = Object.keys(localStorage);
+    const authKeys = keys.filter(key => key.includes('auth') || key.includes('supabase'));
+    console.log('🔍 [Storage Check] Auth-related keys:', authKeys);
+    
+    // Verificar que solo usamos 'mindops-auth'
+    const unexpectedKeys = authKeys.filter(key => !key.includes('mindops-auth'));
+    if (unexpectedKeys.length > 0) {
+      console.warn('⚠️ [Storage Check] Unexpected auth keys found:', unexpectedKeys);
+    }
+  }
+};
+
+// Llamar en desarrollo
+if (import.meta.env.DEV) {
+  checkStorageConsistency();
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: false, // Reducir handshake - usar sesión guardada y evitar refresh en cada reload
+    autoRefreshToken: true, // CRÍTICO: Habilitar refresh automático para mantener sesión estable
     persistSession: true,
     detectSessionInUrl: true,
     storageKey: 'mindops-auth',

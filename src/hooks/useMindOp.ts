@@ -187,14 +187,21 @@ export const useMindOp = (): UseMindOpReturn => {
     }
   }, [user?.id]);  // Effect para cargar MindOp cuando el usuario está disponible
   useEffect(() => {
-    // Only fetch if we have a user, auth is not loading, and we haven't fetched yet
-    if (!authLoading && user && !hasFetchedRef.current) {
+    // CRITICAL: Wait for auth to stabilize before making any requests
+    if (authLoading) {
+      console.log('🔄 [useMindOp] Waiting for auth stabilization...');
+      return;
+    }
+
+    // Only fetch if we have a user and we haven't fetched yet
+    if (user && !hasFetchedRef.current) {
+      console.log('✅ [useMindOp] Auth stabilized, fetching MindOp data...');
       hasFetchedRef.current = true;
       fetchMindOp();
-    } else if (!authLoading && !user) {
+    } else if (!user) {
       // CONSERVATIVE: Only reset states when auth is definitely not loading AND we don't have a user
       // This prevents clearing during temporary auth state changes during refresh
-      console.log('🧹 [useMindOp] No user and auth not loading, clearing states');
+      console.log('🧹 [useMindOp] No user and auth stabilized, clearing states');
       setMindop(null);
       setError(null);
       setLoading(false);
@@ -204,12 +211,13 @@ export const useMindOp = (): UseMindOpReturn => {
       hasFetchedRef.current = false;
       clearMindopCache(); // Clear cache when user logs out
     }
-    // If authLoading is true, we don't clear anything - we wait
 
     // SAFETY NET: Force loading to false after 10 seconds to prevent infinite loading
     const loadingTimeout = setTimeout(() => {
-      console.warn('⚠️ [useMindOp] SAFETY NET: Forcing loading to false after 10 seconds');
-      setLoading(false);
+      if (authLoading) {
+        console.warn('⚠️ [useMindOp] SAFETY NET: Auth still loading after 10 seconds, forcing loading to false');
+        setLoading(false);
+      }
     }, 10000);
 
     return () => {
