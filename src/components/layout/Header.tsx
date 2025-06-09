@@ -18,10 +18,9 @@ const Header: React.FC = () => {
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  };
-  return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="container mx-auto px-4">
+  };  return (
+    <header className="bg-white shadow-sm border-b border-gray-200 w-full">
+      <div className="w-full px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link 
@@ -33,20 +32,8 @@ const Header: React.FC = () => {
               alt="Mindgrate Logo" 
               className="h-12 w-auto object-contain"
             />
-          </Link>
-
-          {/* Navigation */}
+          </Link>          {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link
-              to="/"
-              className={`text-sm font-medium transition-all duration-200 px-3 py-2 rounded-xl ${
-                isActive('/') 
-                  ? 'text-black bg-gray-100' 
-                  : 'text-gray-600 hover:text-black hover:bg-gray-50'
-              }`}
-            >
-              Inicio
-            </Link>
             {user && (
               <Link
                 to="/chat"
@@ -79,24 +66,17 @@ const Header: React.FC = () => {
                 >
                   Cerrar Sesión
                 </Button>
-              </div>
-            ) : (
-              <>
-                <Link
-                  to="/auth"
-                  className={`text-sm font-medium transition-all duration-200 px-3 py-2 rounded-xl ${
-                    isActive('/auth') 
-                      ? 'text-black bg-gray-100' 
-                      : 'text-gray-600 hover:text-black hover:bg-gray-50'
-                  }`}
-                >
-                  Iniciar Sesión
-                </Link>
-                <Link to="/auth">
-                  <Button size="sm">
-                    Registrarse
+              </div>            ) : (
+              <>                <Link to="/auth">
+                  <Button variant="secondary" size="sm">
+                    Iniciar Sesión
                   </Button>
                 </Link>
+                <a href="https://form.typeform.com/to/bZkqm16V" target="_blank" rel="noopener noreferrer">
+                  <Button variant="primary" size="sm">
+                    Feedback
+                  </Button>
+                </a>
               </>
             )}
           </div>

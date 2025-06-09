@@ -50,10 +50,9 @@ const Navbar: React.FC = () => {
   ];
   return (
     <nav className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        {/* Logo */}
+      <div className="flex items-center justify-between">        {/* Logo */}
         <div className="flex items-center">
-          <Link to="/chat" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+          <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <img 
               src={logoImage} 
               alt="Logo" 
@@ -101,10 +100,8 @@ const Navbar: React.FC = () => {
               </span>
             )}
           </Link>
-        </div>
-
-        {/* User Profile Section */}
-        <div className="flex items-center space-x-3">
+        </div>        {/* User Profile Section */}
+        <div className="flex items-center justify-center space-x-3">
           {user && (
             <>
               {/* Avatar */}
@@ -116,7 +113,7 @@ const Navbar: React.FC = () => {
               
               {/* User Info */}
               <div className="hidden md:block">
-                <div className="flex flex-col">
+                <div className="flex flex-col justify-center">
                   <Link
                     to="/profile"
                     className="text-sm font-medium text-black hover:text-gray-700"
@@ -133,7 +130,7 @@ const Navbar: React.FC = () => {
               </div>
 
               {/* Mobile Menu Button */}
-              <div className="md:hidden">
+              <div className="md:hidden flex items-center justify-center">
                 <button
                   onClick={handleSignOut}
                   className="text-xs text-gray-500 hover:text-gray-700"

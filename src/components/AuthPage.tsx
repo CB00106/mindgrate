@@ -42,14 +42,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultMode = 'login' }) => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        {/* Logo and Brand */}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">        {/* Logo and Brand */}
         <div className="flex justify-center mb-6">
           <div className="flex items-center space-x-3">
-            <div className="bg-black rounded-xl p-3">
-              <span className="text-white font-bold text-2xl">M</span>
-            </div>
-            <span className="text-2xl font-semibold text-black">Mindgrate</span>
+            <img 
+              src="/src/images/imageq1_lay.png" 
+              alt="Mindgrate" 
+              className="h-12 w-auto"
+            />
           </div>
         </div>
       </div>
@@ -112,15 +112,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultMode = 'login' }) => {
             >
               Contactar soporte
             </a>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="mt-8 text-center">
-        <p className="text-xs text-gray-500">
-          © 2025 Mindgrate. Todos los derechos reservados.
-        </p>
+          </div>      </div>
       </div>
     </div>
   );
