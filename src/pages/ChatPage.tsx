@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, ChevronDown, Users, User, PlaneTakeoff, MessageSquare, Plus, Trash2, Menu } from 'lucide-react';
+import { Loader2, ChevronDown, Users, User, Send, MessageSquare, Plus, Trash2, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import { supabase } from '@/services/supabaseClient';
@@ -86,15 +86,34 @@ const ChatPage: React.FC = () => {
   
   // Estado para conversación (se actualiza dinámicamente)
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
-  
-  // Estado para gestión de conversaciones
+    // Estado para gestión de conversaciones
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [conversationList, setConversationList] = useState<StoredConversation[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  
-  // Ref para auto-scroll
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Cerrado por defecto para móvil
+    // Ref para auto-scroll
   const conversationEndRef = useRef<HTMLDivElement>(null);
+
+  // Hook para detectar el tamaño de pantalla y ajustar sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth < 768; // md breakpoint
+      if (isMobile && sidebarOpen) {
+        // En móvil, cerrar sidebar por defecto
+        setSidebarOpen(false);
+      } else if (!isMobile && !sidebarOpen) {
+        // En desktop, abrir sidebar por defecto
+        setSidebarOpen(true);
+      }
+    };
+
+    // Ejecutar al montar
+    handleResize();
+    
+    // Escuchar cambios de tamaño
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []); // Solo ejecutar una vez al montar
 
   // Inicializar mensaje de bienvenida solo para nuevas conversaciones
   useEffect(() => {
@@ -881,10 +900,11 @@ Puedes preguntarme sobre:
   // Note: Message saving is now handled by the backend mindop-service
   // which automatically creates conversations and saves messages
   
-  return (
-    <div className="h-full flex bg-gray-50 overflow-hidden">
+  return (    <div className="h-full flex bg-gray-50 overflow-hidden relative">
       {/* Sidebar de Conversaciones */}
-      <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 bg-white border-r border-gray-200 flex flex-col overflow-hidden`}>
+      <div className={`${
+        sidebarOpen ? 'w-80' : 'w-0'
+      } md:relative absolute top-0 left-0 h-full z-50 transition-all duration-300 bg-white border-r border-gray-200 flex flex-col overflow-hidden md:shadow-none shadow-xl`}>
         {/* Header del Sidebar */}
         <div className="p-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
@@ -971,9 +991,16 @@ Puedes preguntarme sobre:
               <p className="text-sm">No hay conversaciones</p>
               <p className="text-xs mt-1">Inicia una nueva conversación</p>
             </div>
-          )}
-        </div>
+          )}        </div>
       </div>
+
+      {/* Overlay para móvil cuando sidebar está abierto */}
+      {sidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Área Principal de Chat */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -1186,16 +1213,15 @@ Puedes preguntarme sobre:
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent resize-none text-sm placeholder-gray-500"
                     style={{ minHeight: '48px', maxHeight: '120px' }}
                   />
-                </div>
-                <button
+                </div>                <button
                   type="submit"
                   disabled={isLoading || !inputText.trim()}
-                  className="flex items-center justify-center w-10 h-10 bg-gray-900 text-white rounded-full hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center w-14 h-14 bg-white text-black border-2 border-gray-300 rounded-full hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                 >
                   {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-6 h-6 animate-spin text-black" />
                   ) : (
-                    <PlaneTakeoff className="w-4 h-4" />
+                    <Send className="w-6 h-6 text-black" />
                   )}
                 </button>
               </div>
