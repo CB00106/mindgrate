@@ -87,13 +87,17 @@ const WaitlistModal: React.FC<WaitlistModalProps> = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white p-6 md:p-8 rounded-lg max-w-md w-full mx-auto">
-        <h3 className="text-xl md:text-2xl font-bold mb-4">¡Únete a la Lista de Espera!</h3>
-        <p className="text-gray-600 mb-6">Sé el primero en conocer las nuevas funcionalidades de Mindgrate.</p>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <button onClick={onClose} className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-[13px] hover:bg-gray-300 transition-colors">Cerrar</button>
+        <h3 className="text-xl md:text-2xl font-bold mb-4">¡Únete a la Lista de Espera!</h3>        <p className="text-gray-600 mb-6">Sé el primero en conocer las nuevas funcionalidades de Mindgrate.</p>
+        <div className="flex flex-row gap-3 sm:gap-4">
+          <button 
+            onClick={onClose} 
+            className="flex-1 bg-gray-200 text-gray-800 font-semibold py-3 px-4 rounded-[13px] hover:bg-gray-300 transition-all duration-300 transform hover:scale-105 flex items-center justify-center text-sm sm:text-base"
+          >
+            Cerrar
+          </button>
           <button
             onClick={() => { alert('¡Gracias! Te contactaremos pronto.'); onClose(); }}
-            className="flex-1 bg-[#2383e2] text-white py-2 px-4 rounded-[13px] hover:bg-[#1d6ab8] transition-colors"
+            className="flex-1 bg-[#2383e2] text-white font-semibold py-3 px-4 rounded-[13px] hover:bg-[#1d6ab8] transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center text-sm sm:text-base"
           >
             Registrarme
           </button>
@@ -119,14 +123,13 @@ const Home = () => {
             </h1>
             <p className="text-lg md:text-xl text-gray-700 max-w-2xl">
               Cada agente es una unidad inteligente que forma parte de una red segura, modular y adaptable. No es un chatbot. No es una suite. Es una nueva forma de operar.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 mt-4">
+            </p>            <div className="flex flex-row gap-3 sm:gap-4 mt-4">
               <button onClick={() => { document.getElementById('bloque-cerebro')?.scrollIntoView({ behavior: 'smooth' }); }}
-                className="bg-[#2383e2] text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-[13px] hover:bg-[#1d6ab8] transition-all duration-300 transform hover:scale-105 shadow-lg">
+                className="flex-1 bg-[#2383e2] text-white font-bold py-3 px-4 sm:px-6 md:py-4 md:px-8 rounded-[13px] hover:bg-[#1d6ab8] transition-all duration-300 transform hover:scale-105 shadow-lg text-center text-sm sm:text-base flex items-center justify-center">
                 Conoce Más
               </button>
               <a href="https://form.typeform.com/to/bZkqm16V" target="_blank" rel="noopener noreferrer"
-                className="bg-[#ebf5fe] text-[#2383e2] font-bold py-3 px-6 md:py-4 md:px-8 rounded-[13px] border-2 border-[#2383e2] hover:bg-[#d6ebfd] transition-all duration-300 transform hover:scale-105 inline-block text-center">
+                className="flex-1 bg-[#ebf5fe] text-[#2383e2] font-bold py-3 px-4 sm:px-6 md:py-4 md:px-8 rounded-[13px] border-2 border-[#2383e2] hover:bg-[#d6ebfd] transition-all duration-300 transform hover:scale-105 text-center text-sm sm:text-base flex items-center justify-center">
                 Feedback
               </a>
             </div>
@@ -183,19 +186,35 @@ const Home = () => {
           </div>
         </div>
       </section>
+      {/* --- INICIO BLOQUE 3.5: TRANSFORMACIÓN --- */}
+            <section className="w-full py-16 md:py-20 px-4 md:px-8 lg:px-24 text-center">
+                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-black leading-tight mb-4">
+                    Transforma tu Operación
+                </h2>
+                <p className="text-lg md:text-xl text-gray-700 max-w-3xl mx-auto">
+                    Convierte procesos complejos en flujos de trabajo inteligentes, proactivos y automatizados.
+                </p>
+            </section>
+            {/* --- FIN BLOQUE 3.5: TRANSFORMACIÓN --- */}
 
       {/* --- INICIO BLOQUE 4: INTELIGENCIA EN ACCIÓN --- */}
       <section className="w-full flex items-center py-16 md:py-20 px-4 md:px-8 lg:px-16">
         <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-          <div className="flex justify-center">
-            <FlipCard title="Optimización de Proyectos Estratégicos" backContent={<p className="text-lg p-2">Analiza la viabilidad de nuevos proyectos, consolida datos, estima presupuestos y asigna talento automáticamente.</p>} className="w-full max-w-[600px] h-[350px] lg:h-[540px]" />
-          </div>
-          <div className="flex flex-col gap-8">
-            <FlipCard title="Gestión Proactiva de Riesgos" backContent={<p className="text-lg p-2">Anticípate a los problemas antes de que se conviertan en crisis, notificando a los agentes y personas clave.</p>} className="w-full h-[256px]" />
-            <FlipCard title="Capitalización del Conocimiento" backContent={<p className="text-lg p-2">Captura aprendizajes al instante y hazlos accesibles para toda la red, mejorando la calidad y velocidad de tu servicio.</p>} className="w-full h-[256px]" />
-          </div>
+            <div className="flex justify-center">
+            <FlipCard 
+              title="Optimización de Proyectos Estratégicos" 
+              subtitle="Alinea recursos, presupuesto y tiempo de forma inteligente."
+              backContent={<p className="text-lg p-2">Analiza la viabilidad de nuevos proyectos, consolida datos, estima presupuestos y asigna talento automáticamente.</p>} 
+              className="w-full max-w-[600px] h-[350px] lg:h-[540px]" 
+            />
+            </div>
+            <div className="flex flex-col gap-8">
+                <FlipCard title="Detección Proactiva de Riesgos" subtitle="Anticípate a los problemas antes de que se conviertan en crisis" backContent={<p className="text-lg p-2">Anticípate a los problemas antes de que se conviertan en crisis, notificando a los agentes y personas clave.</p>} className="w-full h-[256px]" />
+                <FlipCard title="Capitalización del Conocimiento" subtitle="Convierte la experiencia de tu equipo en un activo reutilizable" backContent={<p className="text-lg p-2">Captura aprendizajes al instante y hazlos accesibles para toda la red, mejorando la calidad y velocidad de tu servicio.</p>} className="w-full h-[256px]" />
+            </div>
         </div>
       </section>
+      
 
       {/* --- INICIO BLOQUE 5: EVOLUCIÓN --- */}
       <section className="w-full flex items-center py-16 md:py-20 px-4 md:px-8 lg:px-24">
@@ -206,10 +225,9 @@ const Home = () => {
             </h2>
             <p className="text-lg md:text-xl text-gray-700">
               El viaje de Mindgrate apenas comienza y tu perspectiva es nuestra brújula.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 mt-4 self-center lg:self-start">
-              <a href="/login" className="bg-[#2383e2] text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-[13px] hover:bg-[#1d6ab8] transition-colors shadow-lg text-center">Registrate Ahora</a>
-              <a href="URL_SUPABASE_BUCKET/brochure.pdf" download className="bg-[#ebf5fe] text-[#2383e2] font-bold py-3 px-6 md:py-4 md:px-8 rounded-[13px] border-2 border-[#2383e2] hover:bg-[#d6ebfd] transition-colors text-center">Descargar Brochure</a>
+            </p>            <div className="flex flex-row gap-3 sm:gap-4 mt-4 self-center lg:self-start">
+              <a href="/login" className="flex-1 bg-[#2383e2] text-white font-bold py-3 px-4 sm:px-6 md:py-4 md:px-8 rounded-[13px] hover:bg-[#1d6ab8] transition-colors shadow-lg text-center text-sm sm:text-base flex items-center justify-center">Registrate Ahora</a>
+              <a href="URL_SUPABASE_BUCKET/brochure.pdf" download className="flex-1 bg-[#ebf5fe] text-[#2383e2] font-bold py-3 px-4 sm:px-6 md:py-4 md:px-8 rounded-[13px] border-2 border-[#2383e2] hover:bg-[#d6ebfd] transition-colors text-center text-sm sm:text-base flex items-center justify-center">Descargar Brochure</a>
             </div>
           </div>
           <div className="flex flex-col gap-6 p-6 bg-gray-50 rounded-lg">
@@ -241,6 +259,8 @@ const Home = () => {
           </div>
         </div>
       </section>
+      {/* --- fin bloque 6: LISTA DE ESPERA --- */}
+      {/* --- INICIO BLOQUE 7: FOOTER --- */}
 
       <WaitlistModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
