@@ -17,7 +17,6 @@ interface AuthContextType {
   signUp: (email: string, password: string, options?: SignUpOptions) => Promise<AuthResponse>;
   signOut: () => Promise<{ error: AuthError | null }>;
   updateProfile: (updates: Record<string, unknown>) => Promise<{ error: AuthError | null }>;
-  refreshUserMindOp: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,59 +32,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
-  const [userMindOpId, setUserMindOpId] = useState<string | null>(null);  // Function to fetch user's MindOp ID
-  const fetchUserMindOpId = async (userId: string) => {
-    try {
-      console.log('🔄 [AuthContext] Fetching MindOp for user:', userId);
-        const query = supabase
-        .from('mindops')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-      
-      // Note: Supabase client doesn't support AbortSignal directly on queries
-      // The AbortController is managed at the component level
-      const { data, error } = await query;
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No rows returned - user doesn't have a MindOp yet
-          console.log('ℹ️ [AuthContext] User has no MindOp yet');
-          setUserMindOpId(null);
-        } else {
-          console.error('❌ [AuthContext] Error fetching user MindOp:', error);
-          setUserMindOpId(null);
-        }
-        return;
-      }
-
-      const mindOpId = data?.id || null;
-      console.log('✅ [AuthContext] MindOp ID fetched:', mindOpId);
-      setUserMindOpId(mindOpId);
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log('🔄 [AuthContext] MindOp fetch aborted');
-        return;
-      }
-      console.error('❌ [AuthContext] Unexpected error fetching user MindOp:', error);
-      setUserMindOpId(null);
-    }
-  };
-
-  // Function to refresh user's MindOp (callable from components)
-  const refreshUserMindOp = async () => {
-    if (user?.id) {
-      await fetchUserMindOpId(user.id);
-    }
-  };
+  // Temporary placeholder for userMindOpId to fix build error
+  const userMindOpId = null;
 
   useEffect(() => {
     let mounted = true;
     let isProcessingAuth = false;
-    let mindOpAbortController: AbortController | null = null;
 
     // SINGLE SOURCE OF TRUTH: Use only onAuthStateChange for all auth state management
-    // This eliminates the race condition between getSession() and INITIAL_SESSION event
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -98,24 +52,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         isProcessingAuth = true;
 
-        // Abort any ongoing MindOp fetch
-        if (mindOpAbortController) {
-          mindOpAbortController.abort();
-        }
-
-        console.log(`🔄 [AuthContext] Auth event: ${event}`, { hasSession: !!session, hasUser: !!session?.user });
+        console.log(`🔄 [AuthContext] Auth event: ${event}`, { 
+          hasSession: !!session, 
+          hasUser: !!session?.user 
+        });
         
         try {
           // Handle all auth events in a unified way
           switch (event) {
             case 'INITIAL_SESSION':
               console.log('🔄 [AuthContext] Processing INITIAL_SESSION event');
-              await handleAuthState(session, 'INITIAL_SESSION');
+              handleAuthState(session, 'INITIAL_SESSION');
               break;
               
             case 'SIGNED_IN':
               console.log('🔄 [AuthContext] Processing SIGNED_IN event');
-              await handleAuthState(session, 'SIGNED_IN');
+              handleAuthState(session, 'SIGNED_IN');
               break;
               
             case 'SIGNED_OUT':
@@ -125,7 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               
             case 'TOKEN_REFRESHED':
               console.log('🔄 [AuthContext] Processing TOKEN_REFRESHED event');
-              // For token refresh, just update session without fetching MindOp again
+              // For token refresh, just update session without additional processing
               if (mounted) {
                 setSession(session);
                 setUser(session?.user ?? null);
@@ -155,7 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
 
     // Unified auth state handler
-    const handleAuthState = async (session: Session | null, eventType: string) => {
+    const handleAuthState = (session: Session | null, eventType: string) => {
       if (!mounted) return;
       
       try {
@@ -163,53 +115,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Fetch MindOp ID if user exists
-        if (session?.user) {
-          console.log(`🔄 [AuthContext] Fetching MindOp ID for ${eventType}`);
-          
-          // Create new abort controller for this fetch
-          mindOpAbortController = new AbortController();
-            try {
-            await fetchUserMindOpId(session.user.id);
-            console.log(`✅ [AuthContext] MindOp ID fetched successfully for ${eventType}`);
-          } catch (mindOpError: any) {
-            if (mindOpError.name !== 'AbortError') {
-              console.error(`❌ [AuthContext] Error fetching MindOp ID for ${eventType}:`, mindOpError);
-              setUserMindOpId(null);
-            }
-          }
-        } else {
-          console.log(`🔄 [AuthContext] No user in ${eventType}, setting MindOp ID to null`);
-          setUserMindOpId(null);
-        }
-        
         // Mark initialization complete
         setInitialized(true);
         setLoading(false);
-        console.log(`✅ [AuthContext] ${eventType} processing completed`);
+        
+        console.log(`✅ [AuthContext] ${eventType} processing completed`, {
+          hasUser: !!session?.user,
+          userId: session?.user?.id
+        });
       } catch (error) {
         console.error(`❌ [AuthContext] Error in handleAuthState for ${eventType}:`, error);
         if (mounted) {
-          setUserMindOpId(null);
           setInitialized(true);
           setLoading(false);
         }
       }
-    };    // Sign out handler
+    };
+
+    // Sign out handler
     const handleSignOut = () => {
       if (!mounted) return;
       
-      // Abort any ongoing MindOp fetch
-      if (mindOpAbortController) {
-        mindOpAbortController.abort();
-        mindOpAbortController = null;
-      }
-      
       setSession(null);
       setUser(null);
-      setUserMindOpId(null);
-      
-      // ✨ SOLUCIÓN 2: Marca la autenticación como inicializada y finaliza la carga
       setInitialized(true);
       setLoading(false);
       
@@ -219,7 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Safety timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
       if (mounted && loading && !initialized) {
-        console.warn('🔄 [AuthContext] Auth initialization timeout, forcing loading to false');
+        console.warn('⚠️ [AuthContext] Auth initialization timeout, forcing loading to false');
         setInitialized(true);
         setLoading(false);
       }
@@ -228,12 +156,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       mounted = false;
       isProcessingAuth = false;
-      
-      // Abort any ongoing MindOp fetch
-      if (mindOpAbortController) {
-        mindOpAbortController.abort();
-      }
-      
       clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
@@ -249,13 +171,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       
       if (result.error) {
-        console.error('Sign in error:', result.error);
+        console.error('❌ [AuthContext] Sign in error:', result.error);
         await handleAuthError(result.error);
+      } else {
+        console.log('✅ [AuthContext] Sign in successful');
       }
       
       return result;
     } catch (error) {
-      console.error('Unexpected sign in error:', error);
+      console.error('❌ [AuthContext] Unexpected sign in error:', error);
       await handleAuthError(error);
       return { 
         data: { user: null, session: null }, 
@@ -269,14 +193,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (email: string, password: string, options?: SignUpOptions) => {
     try {
       setLoading(true);
+      
       const result = await supabase.auth.signUp({
         email,
         password,
         options,
       });
+      
+      if (result.error) {
+        console.error('❌ [AuthContext] Sign up error:', result.error);
+      } else {
+        console.log('✅ [AuthContext] Sign up successful');
+      }
+      
       return result;
     } catch (error) {
-      console.error('Unexpected sign up error:', error);
+      console.error('❌ [AuthContext] Unexpected sign up error:', error);
       return { 
         data: { user: null, session: null }, 
         error: { message: 'Error inesperado durante el registro' } as any 
@@ -285,30 +217,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     }
   };
+
   const signOut = async () => {
     try {
-      // ✨ SOLUCIÓN 1: signOut solo invoca a Supabase
-      // No gestiones el estado aquí. Solo llama a Supabase.
-      // El listener onAuthStateChange se encargará de actualizar el estado.
       setLoading(true);
+      console.log('🔄 [AuthContext] Starting sign out process');
+      
       const result = await supabase.auth.signOut();
+      
+      if (result.error) {
+        console.error('❌ [AuthContext] Sign out error:', result.error);
+      } else {
+        console.log('✅ [AuthContext] Sign out successful');
+      }
+      
       return result;
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('❌ [AuthContext] Unexpected sign out error:', error);
       setLoading(false);
       return { error: error as AuthError };
     }
   };
 
   const updateProfile = async (updates: Record<string, unknown>) => {
-    setLoading(true);
-    const result = await supabase.auth.updateUser({
-      data: updates
-    });
-    setLoading(false);
-    return { error: result.error };
+    try {
+      setLoading(true);
+      console.log('🔄 [AuthContext] Updating user profile');
+      
+      const result = await supabase.auth.updateUser({
+        data: updates
+      });
+      
+      if (result.error) {
+        console.error('❌ [AuthContext] Update profile error:', result.error);
+      } else {
+        console.log('✅ [AuthContext] Profile updated successfully');
+      }
+      
+      return { error: result.error };
+    } catch (error) {
+      console.error('❌ [AuthContext] Unexpected update profile error:', error);
+      return { error: error as AuthError };
+    } finally {
+      setLoading(false);
+    }
   };
-
   const value: AuthContextType = {
     user,
     session,
@@ -319,7 +272,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signUp,
     signOut,
     updateProfile,
-    refreshUserMindOp,
   };
 
   return (
