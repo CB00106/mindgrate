@@ -3,6 +3,9 @@ import { useAuth } from './useAuth';
 import { Mindop, CreateMindopData } from '@/types/mindops';
 import MindopService from '@/services/mindopService';
 
+// =================================================
+// >> CACHE UTILITIES TEMPORALMENTE DESACTIVADAS PARA PRUEBAS <<
+/*
 // Cache utilities for localStorage
 const MINDOP_CACHE_KEY = 'mindop_cache';
 const CACHE_TIMESTAMP_KEY = 'mindop_cache_timestamp';
@@ -13,7 +16,15 @@ interface CachedMindop {
   timestamp: number;
   userId: string;
 }
+*/
 
+// Solo mantenemos estas constantes activas para clearMindopCache
+const MINDOP_CACHE_KEY = 'mindop_cache';
+const CACHE_TIMESTAMP_KEY = 'mindop_cache_timestamp';
+
+// =================================================
+// >> FUNCIONES DE CACHÉ TEMPORALMENTE DESACTIVADAS PARA PRUEBAS <<
+/*
 const getCachedMindop = (userId: string): Mindop | null => {
   try {
     const cachedData = localStorage.getItem(MINDOP_CACHE_KEY);
@@ -50,6 +61,7 @@ const setCachedMindop = (mindop: Mindop | null, userId: string): void => {
     console.warn('Error setting mindop cache:', error);
   }
 };
+*/
 
 const clearMindopCache = (): void => {
   try {
@@ -59,6 +71,7 @@ const clearMindopCache = (): void => {
     console.warn('Error clearing mindop cache:', error);
   }
 };
+// =================================================
 
 interface UseMindOpReturn {
   mindop: Mindop | null;
@@ -71,16 +84,19 @@ interface UseMindOpReturn {
 }
 
 export const useMindOp = (): UseMindOpReturn => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, initialized: authInitialized } = useAuth();
   const [mindop, setMindop] = useState<Mindop | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isStale, setIsStale] = useState(false); // Track if showing cached data
-  
-  // Use ref to track if we've already fetched to prevent duplicate calls
+    // Use ref to track if we've already fetched to prevent duplicate calls
   const hasFetchedRef = useRef(false);
   const retryCountRef = useRef(0);
+  
+  /*
+  // =================================================
+  // >> LÓGICA DEL CACHÉ TEMPORALMENTE DESACTIVADA PARA PRUEBAS <<
   // Load cached data immediately when user is available
   useEffect(() => {
     if (user?.id && !mindop) {
@@ -92,7 +108,7 @@ export const useMindOp = (): UseMindOpReturn => {
         console.log('📱 [useMindOp] Loaded cached MindOp, will revalidate in background');
       }
     }
-    
+    //
     // If user changed (different ID), clear cache and state for previous user
     if (user?.id && mindop && hasFetchedRef.current) {
       const cachedMindop = getCachedMindop(user.id);
@@ -105,50 +121,77 @@ export const useMindOp = (): UseMindOpReturn => {
         hasFetchedRef.current = false; // Force refetch for new user
       }
     }
-  }, [user?.id, mindop]);const fetchMindOp = useCallback(async () => {
+  }, [user?.id, mindop]);
+  // =================================================
+  */  const fetchMindOp = useCallback(async () => {
     if (!user?.id) {
+      console.log('❌ [useMindOp] Cannot fetch: no user ID available');
       setLoading(false);
       return;
     }
     
-    // Don't show loading spinner if we have cached data (stale-while-revalidate)
-    if (!isStale) {
-      setLoading(true);
-    }
-    setError(null);
+    // ⚡ PRUEBA SIN CACHÉ: Siempre mostrar loading
+    console.log('🧪 [PRUEBA SIN CACHÉ] Iniciando petición limpia sin caché');
+    setLoading(true);
+    // No limpies el error aquí, para no causar un parpadeo si falla el re-fetch
+
+    // >> VERIFICACIÓN CRÍTICA ANTES DE LLAMAR AL SERVICIO <<
+    console.log('VERIFICACIÓN CRÍTICA ANTES DE LLAMAR AL SERVICIO:', { 
+      userId: user?.id, 
+      authLoading: authLoading,
+      authInitialized: authInitialized,
+      testMode: 'SIN_CACHE',
+      hasPreviousData: !!mindop
+    });
 
     try {
+      console.log('📡 [useMindOp] Fetching MindOp data for user:', user.id);
       const data = await MindopService.getUserMindOp(user.id);
+        // Si la petición tuvo éxito, actualizamos todo el estado a "fresco"
       setMindop(data);
+      // 🧪 PRUEBA SIN CACHÉ: Desactivar operaciones de caché temporalmente
+      // setCachedMindop(data, user.id); // Actualiza el caché con los nuevos datos
+      setError(null); // Limpia cualquier error anterior
       setRetryCount(0);
       retryCountRef.current = 0;
       setIsStale(false); // Data is now fresh
       
-      // Cache the fresh data
-      setCachedMindop(data, user.id);
-      
-      console.log('✅ [useMindOp] Fresh MindOp data fetched and cached');
+      console.log('✅ [useMindOp] Datos frescos obtenidos (sin caché en esta prueba).');
     } catch (err: any) {
-      console.error('Error fetching MindOp:', err);
+      console.error('❌ [useMindOp] Falló la petición de fetch:', err);
       
-      const isHttp406 = err.message?.includes('406') || err.status === 406 || err.code === '406';
-      
-      if (isHttp406) {
-        setError('Error de comunicación con el servidor. Por favor, intenta de nuevo.');
+      // *** LA LÓGICA CLAVE ESTÁ AQUÍ ***
+      // Si la petición falla, PERO ya teníamos datos en el estado (del caché),
+      // NO mostraremos un error al usuario. Simplemente lo reportamos en la consola
+      // y dejamos que el usuario siga viendo los datos "stale".
+      if (mindop) {
+        console.warn('⚠️ [useMindOp] Revalidación en segundo plano fallida, pero se mantienen los datos existentes.');
+        // ¡No hacemos nada más! No llamamos a setError().
+        // El usuario sigue viendo los datos que ya tenía
       } else {
-        setError(`Error al cargar la configuración: ${err.message || 'Error desconocido'}`);
+        // Si llegamos aquí, significa que el fetch inicial (sin caché) falló.
+        // En este caso, SÍ es correcto y necesario mostrar el error.
+        console.error('💥 [useMindOp] Fetch inicial falló sin datos previos - mostrando error al usuario');
+        
+        const isHttp406 = err.message?.includes('406') || err.status === 406 || err.code === '406';
+        
+        if (isHttp406) {
+          setError('Error de comunicación con el servidor. Por favor, intenta de nuevo.');
+        } else {
+          setError(`Error al cargar la configuración: ${err.message || 'Error desconocido'}`);
+        }
+        
+        // Increment retry count para mostrar en la UI
+        const newRetryCount = retryCountRef.current + 1;
+        retryCountRef.current = newRetryCount;
+        setRetryCount(newRetryCount);
       }
-      
-      // Increment retry count for UI display
-      const newRetryCount = retryCountRef.current + 1;
-      retryCountRef.current = newRetryCount;
-      setRetryCount(newRetryCount);
     } finally {
-      // ALWAYS set loading to false when fetch completes
+      // Al final, siempre quitamos el estado de carga
       setLoading(false);
       setIsStale(false); // Clear stale flag regardless of success/failure
     }
-  }, [user?.id, isStale]);  // Función de refetch manual
+  }, [user?.id, authLoading, authInitialized, mindop]); // Añadimos `mindop` a las dependencias para tener su valor actual en el catch// Función de refetch manual
   const refetch = useCallback(async () => {
     console.log('🔄 [useMindOp] Manual refetch triggered');
     retryCountRef.current = 0;
@@ -162,17 +205,15 @@ export const useMindOp = (): UseMindOpReturn => {
     }
     
     setLoading(true);
-    setError(null);
-
-    try {
+    setError(null);    try {
       const result = await MindopService.upsertUserMindOp(user.id, data);
       setMindop(result);
       
-      // Update cache with fresh saved data
-      setCachedMindop(result, user.id);
+      // 🧪 PRUEBA SIN CACHÉ: Desactivar operaciones de caché temporalmente
+      // setCachedMindop(result, user.id);
       setIsStale(false);
       
-      console.log('💾 [useMindOp] MindOp saved and cached successfully');
+      console.log('💾 [useMindOp] MindOp saved successfully (sin caché en esta prueba)');
     } catch (err: any) {
       console.error('Error saving MindOp:', err);
       
@@ -185,23 +226,25 @@ export const useMindOp = (): UseMindOpReturn => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);  // Effect para cargar MindOp cuando el usuario está disponible
+  }, [user?.id]);  // Effect para cargar MindOp cuando la autenticación esté completamente inicializada
   useEffect(() => {
-    // CRITICAL: Wait for auth to stabilize before making any requests
-    if (authLoading) {
-      console.log('🔄 [useMindOp] Waiting for auth stabilization...');
+    // 🚨 CRÍTICO: No hacer absolutamente NADA hasta que la autenticación esté completamente inicializada
+    if (!authInitialized) {
+      console.log('🔄 [useMindOp] Esperando a que el contexto de Auth se inicialice completamente...');
       return;
     }
 
-    // Only fetch if we have a user and we haven't fetched yet
+    // ✅ Una vez inicializado, tomar una decisión clara y definitiva
+    console.log('✅ [useMindOp] Auth completamente inicializado. Estado del usuario:', user ? 'authenticated' : 'not authenticated');
+
     if (user && !hasFetchedRef.current) {
-      console.log('✅ [useMindOp] Auth stabilized, fetching MindOp data...');
+      // ✅ Usuario autenticado y no hemos hecho fetch - proceder a obtener datos
+      console.log('🚀 [useMindOp] Usuario autenticado detectado. Iniciando fetch de MindOp...');
       hasFetchedRef.current = true;
       fetchMindOp();
-    } else if (!user) {
-      // CONSERVATIVE: Only reset states when auth is definitely not loading AND we don't have a user
-      // This prevents clearing during temporary auth state changes during refresh
-      console.log('🧹 [useMindOp] No user and auth stabilized, clearing states');
+    } else if (!user && hasFetchedRef.current) {
+      // ✅ No hay usuario pero teníamos datos previos - limpiar todo
+      console.log('🧹 [useMindOp] Usuario deslogueado detectado. Limpiando todos los estados y cache...');
       setMindop(null);
       setError(null);
       setLoading(false);
@@ -209,21 +252,35 @@ export const useMindOp = (): UseMindOpReturn => {
       setIsStale(false);
       retryCountRef.current = 0;
       hasFetchedRef.current = false;
-      clearMindopCache(); // Clear cache when user logs out
+      clearMindopCache();
+    } else if (!user && !hasFetchedRef.current) {
+      // ✅ No hay usuario y no hemos hecho fetch - asegurar estado limpio
+      console.log('🔍 [useMindOp] No hay usuario. Asegurando estado limpio...');
+      setMindop(null);
+      setError(null);
+      setLoading(false);
+      setRetryCount(0);
+      setIsStale(false);
+      retryCountRef.current = 0;
+    } else if (user && hasFetchedRef.current) {
+      // ✅ Usuario existe y ya hemos hecho fetch - no hacer nada (datos ya cargados)
+      console.log('✅ [useMindOp] Usuario autenticado con datos ya cargados. No se requiere acción.');
     }
 
-    // SAFETY NET: Force loading to false after 10 seconds to prevent infinite loading
+    // SAFETY NET: Forzar loading a false después de 5 segundos para prevenir carga infinita
     const loadingTimeout = setTimeout(() => {
-      if (authLoading) {
-        console.warn('⚠️ [useMindOp] SAFETY NET: Auth still loading after 10 seconds, forcing loading to false');
+      if (loading) {
+        console.warn('⚠️ [useMindOp] SAFETY NET: Aún cargando después de 5 segundos, forzando loading a false');
         setLoading(false);
       }
-    }, 10000);
+    }, 5000);
 
     return () => {
       clearTimeout(loadingTimeout);
     };
-  }, [user, authLoading, fetchMindOp]);return {
+  }, [user, authInitialized]); // ✅ Depender del usuario Y la señal de inicialización completa
+
+  return {
     mindop,
     loading,
     error,

@@ -195,9 +195,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setLoading(false);
         }
       }
-    };
-
-    // Sign out handler
+    };    // Sign out handler
     const handleSignOut = () => {
       if (!mounted) return;
       
@@ -210,7 +208,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(null);
       setUser(null);
       setUserMindOpId(null);
+      
+      // ✨ SOLUCIÓN 2: Marca la autenticación como inicializada y finaliza la carga
+      setInitialized(true);
       setLoading(false);
+      
       console.log('✅ [AuthContext] SIGNED_OUT processed');
     };
 
@@ -283,27 +285,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     }
   };
-
   const signOut = async () => {
     try {
+      // ✨ SOLUCIÓN 1: signOut solo invoca a Supabase
+      // No gestiones el estado aquí. Solo llama a Supabase.
+      // El listener onAuthStateChange se encargará de actualizar el estado.
       setLoading(true);
-      
-      // Clear local state first
-      setSession(null);
-      setUser(null);
-      setUserMindOpId(null);
-      
       const result = await supabase.auth.signOut();
       return result;
     } catch (error) {
       console.error('Sign out error:', error);
-      // Even if signOut fails, ensure local state is cleared
-      setSession(null);
-      setUser(null);
-      setUserMindOpId(null);
-      return { error: null };
-    } finally {
       setLoading(false);
+      return { error: error as AuthError };
     }
   };
 

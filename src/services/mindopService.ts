@@ -41,11 +41,10 @@ const retryWithBackoff = async <T>(
   baseDelay: number = 500,
   queryId: string
 ): Promise<T> => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {    try {
       console.log(`🔄 [${queryId}] Attempt ${attempt}/${maxRetries}`);
-      // Add 10 second timeout per attempt
-      const result = await withTimeout(operation(), 10000, queryId);
+      // Add 20 second timeout per attempt
+      const result = await withTimeout(operation(), 20000, queryId);
       console.log(`✅ [${queryId}] Operation completed successfully on attempt ${attempt}`);
       return result;
     } catch (error) {
@@ -80,87 +79,47 @@ const retryWithBackoff = async <T>(
   throw new Error(`[${queryId}] All retry attempts exhausted`);
 };
 
-export class MindopService {
-  /**
-   * Get user's MindOp configuration with robust HTTP 406 handling
+export class MindopService {  /**
+   * Get user's MindOp configuration - simplified approach using only array strategy
    */
   static async getUserMindOp(userId: string): Promise<Mindop | null> {
     const queryId = `query_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     console.log(`🔍 [${queryId}] MindopService fetching MindOp for user: ${userId}`);
-    
+
     const operation = async () => {
-      try {
-        // Estrategia 1: Array query primero (más confiable)
-        console.log(`🔄 [${queryId}] Trying array approach first...`);
-        console.log(`🔄 [${queryId}] About to execute Supabase query...`);
-        
-        const { data: arrayData, error: arrayError } = await supabase
-          .from('mindops')
-          .select('id, user_id, mindop_name, mindop_description, created_at')
-          .eq('user_id', userId)
-          .limit(1);
+      const { data, error } = await supabase
+        .from('mindops')
+        .select('id, user_id, mindop_name, mindop_description, created_at')
+        .eq('user_id', userId)
+        .limit(1); // Usar siempre esta estrategia más robusta
 
-        console.log(`🔄 [${queryId}] Supabase query executed, processing results...`);
-        console.log(`🔄 [${queryId}] Array data:`, arrayData);
-        console.log(`🔄 [${queryId}] Array error:`, arrayError);
-
-        if (arrayError) {
-          console.warn(`⚠️ [${queryId}] Array approach failed:`, arrayError);
-          throw arrayError;
+      if (error) {
+        // Si el error es PGRST116, significa "no rows found", lo cual no es un error real.
+        if (error.code === 'PGRST116') {
+          console.log(`ℹ️ [${queryId}] No MindOp found for user.`);
+          return null;
         }
-
-        if (arrayData && arrayData.length > 0) {
-          const result = arrayData[0];
-          console.log(`✅ [${queryId}] MindOp found with array approach:`, {
-            id: result.id,
-            name: result.mindop_name,
-            createdAt: result.created_at
-          });
-          return result;
-        }
-
-        console.log(`ℹ️ [${queryId}] No MindOp found for user (array approach)`);
-        return null;
-
-      } catch (firstError) {
-        console.warn(`⚠️ [${queryId}] Array approach failed, trying maybeSingle:`, firstError);
-        
-        // Estrategia 2: Fallback a maybeSingle
-        try {
-          console.log(`🔄 [${queryId}] Trying maybeSingle approach...`);
-          
-          const { data, error } = await supabase
-            .from('mindops')
-            .select('id, user_id, mindop_name, mindop_description, created_at')
-            .eq('user_id', userId)
-            .maybeSingle();
-
-          console.log(`🔄 [${queryId}] maybeSingle executed:`, { data, error });
-
-          if (error) {
-            console.error(`❌ [${queryId}] maybeSingle also failed:`, error);
-            throw error;
-          }
-
-          if (!data) {
-            console.log(`ℹ️ [${queryId}] No MindOp found for user (maybeSingle)`);
-            return null;
-          }
-
-          console.log(`✅ [${queryId}] MindOp found with maybeSingle:`, {
-            id: data.id,
-            name: data.mindop_name,
-            createdAt: data.created_at
-          });
-          return data;
-
-        } catch (secondError) {
-          console.error(`❌ [${queryId}] Both strategies failed:`, { firstError, secondError });
-          throw secondError;
-        }
+        // Para cualquier otro error, lánzalo para que retryWithBackoff lo maneje.
+        console.error(`❌ [${queryId}] Supabase query failed:`, error);
+        throw error;
       }
+
+      if (data && data.length > 0) {
+        const result = data[0];
+        console.log(`✅ [${queryId}] MindOp found:`, {
+          id: result.id,
+          name: result.mindop_name,
+          createdAt: result.created_at
+        });
+        return result;
+      }
+
+      // Si no hay datos ni error, simplemente no existe el MindOp.
+      console.log(`ℹ️ [${queryId}] No MindOp found for user.`);
+      return null;
     };
 
+    // El sistema de reintentos sigue siendo valioso, especialmente para errores de red como el 406.
     return await retryWithBackoff(operation, 3, 1000, queryId);
   }
 
