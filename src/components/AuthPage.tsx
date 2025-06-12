@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import LoginForm from '@/components/LoginForm';
 import SignupForm from '@/components/SignupForm';
+import logoImage from '@/images/imageq1_lay.png';
 
 type AuthMode = 'login' | 'signup';
 
@@ -46,7 +47,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultMode = 'login' }) => {
         <div className="flex justify-center mb-6">
           <div className="flex items-center space-x-3">
             <img 
-              src="/src/images/imageq1_lay.png" 
+              src={logoImage}  
               alt="Mindgrate" 
               className="h-12 w-auto"
             />
