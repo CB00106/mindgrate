@@ -33,7 +33,8 @@ export interface ProcessedNotification {
 class NotificationService {
   /**
    * Obtiene las solicitudes de seguimiento para el usuario actual
-   */  async getFollowRequestNotifications(userMindOpId: string): Promise<ProcessedNotification[]> {
+   */  
+  async getFollowRequestNotifications(userMindOpId: string): Promise<ProcessedNotification[]> {
     try {
       // Usar la consulta optimizada con joins correctos basada en la estructura real
       const { data, error } = await supabase
@@ -111,6 +112,7 @@ class NotificationService {
       return [];
     }
   }
+
   /**
    * Procesa las solicitudes de seguimiento con datos obtenidos via joins
    */
@@ -134,6 +136,7 @@ class NotificationService {
       };
     });
   }
+
   /**
    * Procesa las solicitudes de seguimiento con datos de MindOps relacionados
    */
@@ -160,6 +163,7 @@ class NotificationService {
       };
     });
   }
+
   /**
    * Acepta una solicitud de seguimiento
    */
@@ -271,17 +275,20 @@ class NotificationService {
   }
 
   /**
-   * Obtiene los MindOps que el usuario actual está siguiendo
+   * Obtiene los MindOps que el usuario actual está siguiendo - VERSION CORREGIDA
    */
   async getFollowingMindOps(userMindOpId: string): Promise<any[]> {
     try {
-      const { data, error } = await supabase
+      console.log('🔄 [NotificationService] Intentando getFollowingMindOps con JOIN específico...');
+      
+      // Intento 1: Con JOIN específico para target_mindop_id
+      const { data: dataWithJoin, error: errorWithJoin } = await supabase
         .from('follow_requests')
         .select(`
           id,
           target_mindop_id,
           created_at,
-          target_mindop:mindops!follow_requests_target_mindop_id_fkey (
+          target_mindop:target_mindop_id (
             id,
             mindop_name,
             mindop_description,
@@ -292,12 +299,50 @@ class NotificationService {
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching following mindops:', error);
+      if (!errorWithJoin && dataWithJoin) {
+        console.log('✅ [NotificationService] JOIN específico exitoso para following:', dataWithJoin);
+        return dataWithJoin;
+      }
+
+      console.log('⚠️ [NotificationService] JOIN específico falló para following, usando fallback. Error:', errorWithJoin);
+
+      // Fallback: Consultas separadas
+      const { data: followRequests, error: requestsError } = await supabase
+        .from('follow_requests')
+        .select('id, target_mindop_id, created_at')
+        .eq('requester_mindop_id', userMindOpId)
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false });
+
+      if (requestsError) {
+        console.error('Error fetching following follow_requests:', requestsError);
         return [];
       }
 
-      return data || [];
+      if (!followRequests || followRequests.length === 0) {
+        return [];
+      }
+
+      // Obtener los MindOps por separado
+      const targetIds = followRequests.map(req => req.target_mindop_id);
+      const { data: mindops, error: mindopError } = await supabase
+        .from('mindops')
+        .select('id, mindop_name, mindop_description, user_id')
+        .in('id', targetIds);
+
+      if (mindopError) {
+        console.error('Error fetching target mindops:', mindopError);
+        return followRequests; // Devolver al menos los datos básicos
+      }
+
+      // Combinar los datos manualmente
+      const combinedData = followRequests.map(request => ({
+        ...request,
+        target_mindop: mindops?.find(m => m.id === request.target_mindop_id) || null
+      }));
+
+      console.log('✅ [NotificationService] Fallback exitoso para following:', combinedData);
+      return combinedData;
     } catch (error) {
       console.error('Error in getFollowingMindOps:', error);
       return [];
@@ -305,17 +350,20 @@ class NotificationService {
   }
 
   /**
-   * Obtiene los MindOps que siguen al usuario actual
+   * Obtiene los MindOps que siguen al usuario actual - VERSION CORREGIDA
    */
   async getFollowerMindOps(userMindOpId: string): Promise<any[]> {
     try {
-      const { data, error } = await supabase
+      console.log('🔄 [NotificationService] Intentando getFollowerMindOps con JOIN específico...');
+      
+      // Intento 1: Con JOIN específico para requester_mindop_id
+      const { data: dataWithJoin, error: errorWithJoin } = await supabase
         .from('follow_requests')
         .select(`
           id,
           requester_mindop_id,
           created_at,
-          requester_mindop:mindops!follow_requests_requester_mindop_id_fkey (
+          requester_mindop:requester_mindop_id (
             id,
             mindop_name,
             mindop_description,
@@ -326,17 +374,56 @@ class NotificationService {
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching follower mindops:', error);
+      if (!errorWithJoin && dataWithJoin) {
+        console.log('✅ [NotificationService] JOIN específico exitoso para followers:', dataWithJoin);
+        return dataWithJoin;
+      }
+
+      console.log('⚠️ [NotificationService] JOIN específico falló para followers, usando fallback. Error:', errorWithJoin);
+
+      // Fallback: Consultas separadas
+      const { data: followRequests, error: requestsError } = await supabase
+        .from('follow_requests')
+        .select('id, requester_mindop_id, created_at')
+        .eq('target_mindop_id', userMindOpId)
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false });
+
+      if (requestsError) {
+        console.error('Error fetching follower follow_requests:', requestsError);
         return [];
       }
 
-      return data || [];
+      if (!followRequests || followRequests.length === 0) {
+        return [];
+      }
+
+      // Obtener los MindOps por separado
+      const requesterIds = followRequests.map(req => req.requester_mindop_id);
+      const { data: mindops, error: mindopError } = await supabase
+        .from('mindops')
+        .select('id, mindop_name, mindop_description, user_id')
+        .in('id', requesterIds);
+
+      if (mindopError) {
+        console.error('Error fetching requester mindops:', mindopError);
+        return followRequests; // Devolver al menos los datos básicos
+      }
+
+      // Combinar los datos manualmente
+      const combinedData = followRequests.map(request => ({
+        ...request,
+        requester_mindop: mindops?.find(m => m.id === request.requester_mindop_id) || null
+      }));
+
+      console.log('✅ [NotificationService] Fallback exitoso para followers:', combinedData);
+      return combinedData;
     } catch (error) {
       console.error('Error in getFollowerMindOps:', error);
       return [];
     }
   }
+
   /**
    * Revoca un seguimiento (dejar de seguir a un MindOp)
    */
@@ -385,6 +472,7 @@ class NotificationService {
       return { success: false, error: 'Error interno del servidor' };
     }
   }
+
   /**
    * Remueve un seguidor (revocar el seguimiento de un MindOp hacia el usuario)
    */

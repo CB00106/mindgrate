@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, Loader2, AlertCircle, Bell, UserPlus, RefreshCw, Clock, UserMinus, Users, Heart } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useMindOp } from '@/hooks/useMindOp';
 import { notificationService, ProcessedNotification } from '@/services/notificationService';
 
 interface ActionState {
@@ -12,7 +12,7 @@ interface ActionError {
 }
 
 const NotificationsPage: React.FC = () => {
-  const { userMindOpId, loading: authLoading } = useAuth();
+  const { mindop: userMindOp, initialized: mindOpInitialized } = useMindOp();
   const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'follow_requests' | 'connections'>('all');
   const [notifications, setNotifications] = useState<ProcessedNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,35 +26,44 @@ const NotificationsPage: React.FC = () => {
   const [followers, setFollowers] = useState<any[]>([]);
   const [connectionsLoading, setConnectionsLoading] = useState(false);
   const [connectionActionStates, setConnectionActionStates] = useState<ActionState>({});
-  const [connectionActionErrors, setConnectionActionErrors] = useState<ActionError>({});  // Cargar notificaciones al montar el componente
+  const [connectionActionErrors, setConnectionActionErrors] = useState<ActionError>({});
+
+  // Extraer el ID del MindOp del usuario
+  const userMindOpId = userMindOp?.id || null;
+
+  // Cargar notificaciones al montar el componente
   useEffect(() => {
-    // CRITICAL: Wait for auth to stabilize before loading notifications
-    if (authLoading) {
-      console.log('🔄 [NotificationsPage] Waiting for auth stabilization before loading notifications...');
+    // Wait for mindop to be initialized before loading notifications
+    if (!mindOpInitialized) {
+      console.log('🔄 [NotificationsPage] Waiting for mindop initialization before loading notifications...');
       return;
     }
 
     if (userMindOpId) {
       loadNotifications();
+    } else {
+      // Si no hay MindOp, limpiar loading
+      setLoading(false);
     }
-  }, [userMindOpId, authLoading]); // Add authLoading as dependency
+  }, [userMindOpId, mindOpInitialized]);
 
   // Cargar conexiones cuando se cambia al tab de conexiones
   useEffect(() => {
-    // CRITICAL: Wait for auth to stabilize before loading connections
-    if (authLoading) {
-      console.log('🔄 [NotificationsPage] Waiting for auth stabilization before loading connections...');
+    // Wait for mindop to be initialized before loading connections
+    if (!mindOpInitialized) {
+      console.log('🔄 [NotificationsPage] Waiting for mindop initialization before loading connections...');
       return;
     }
 
     if (userMindOpId && activeTab === 'connections') {
       loadConnections();
     }
-  }, [userMindOpId, activeTab, authLoading]); // Add authLoading as dependency
+  }, [userMindOpId, activeTab, mindOpInitialized]);
+
   const loadNotifications = async () => {
-    // CRITICAL: Wait for auth to stabilize before loading notifications
-    if (authLoading) {
-      console.log('🔄 [NotificationsPage] Auth still loading, cannot load notifications');
+    // Wait for mindop to be initialized
+    if (!mindOpInitialized) {
+      console.log('🔄 [NotificationsPage] MindOp not initialized, cannot load notifications');
       return;
     }
 
@@ -76,33 +85,90 @@ const NotificationsPage: React.FC = () => {
       setLoading(false);
     }
   };
-  const loadConnections = async () => {
-    // CRITICAL: Wait for auth to stabilize before loading connections
-    if (authLoading) {
-      console.log('🔄 [NotificationsPage] Auth still loading, cannot load connections');
-      return;
-    }
 
-    if (!userMindOpId) return;
+ const loadConnections = async () => {
+  // Wait for mindop to be initialized
+  if (!mindOpInitialized) {
+    console.log('🔄 [NotificationsPage] MindOp not initialized, cannot load connections');
+    return;
+  }
 
-    try {
-      setConnectionsLoading(true);
-      const [followingData, followersData] = await Promise.all([
-        notificationService.getFollowingMindOps(userMindOpId),
-        notificationService.getFollowerMindOps(userMindOpId)
-      ]);
-      
-      setFollowing(followingData);
-      setFollowers(followersData);
-    } catch (error) {
-      console.error('Error loading connections:', error);
-      setError('Error al cargar las conexiones');
-    } finally {
-      setConnectionsLoading(false);
-    }
-  };
+  if (!userMindOpId) return;
+
+  try {
+    setConnectionsLoading(true);
+    const [followingData, followersData] = await Promise.all([
+      notificationService.getFollowingMindOps(userMindOpId),
+      notificationService.getFollowerMindOps(userMindOpId)
+    ]);
+      // ADAPTACIÓN: Trabajar con los datos actuales que tienen IDs pero no objetos completos
+    const validFollowing = (followingData || []).filter(
+      connection => connection && (
+        // Caso ideal: tiene el objeto completo
+        (connection.target_mindop && connection.target_mindop.id) ||
+        // Caso actual: solo tiene el ID
+        connection.target_mindop_id
+      )
+    ).map(connection => {
+      // Si no tiene el objeto completo, creamos uno básico
+      if (!connection.target_mindop && connection.target_mindop_id) {
+        return {
+          ...connection,
+          target_mindop: {
+            id: connection.target_mindop_id,
+            mindop_name: `MindOp ${connection.target_mindop_id.slice(0, 8)}...`,
+            mindop_description: 'Información no disponible'
+          }
+        };
+      }
+      return connection;
+    });
+
+    const validFollowers = (followersData || []).filter(
+      connection => connection && (
+        // Caso ideal: tiene el objeto completo
+        (connection.requester_mindop && connection.requester_mindop.id) ||
+        // Caso actual: solo tiene el ID
+        connection.requester_mindop_id
+      )
+    ).map(connection => {
+      // Si no tiene el objeto completo, creamos uno básico
+      if (!connection.requester_mindop && connection.requester_mindop_id) {
+        return {
+          ...connection,
+          requester_mindop: {
+            id: connection.requester_mindop_id,
+            mindop_name: `MindOp ${connection.requester_mindop_id.slice(0, 8)}...`,
+            mindop_description: 'Información no disponible'
+          }
+        };
+      }
+      return connection;
+    });
+    
+    console.log('📊 [NotificationsPage] Conexiones procesadas:', {
+      followingTotal: followingData?.length || 0,
+      followingValid: validFollowing.length,
+      followersTotal: followersData?.length || 0,
+      followersValid: validFollowers.length
+    });
+    
+    setFollowing(validFollowing);
+    setFollowers(validFollowers);
+  } catch (error) {
+    console.error('Error loading connections:', error);
+    setError('Error al cargar las conexiones');
+    // En caso de error, asegurar que las listas estén vacías
+    setFollowing([]);
+    setFollowers([]);
+  } finally {
+    setConnectionsLoading(false);
+  }
+};
 
   const filteredNotifications = notifications.filter(notification => {
+    if (!notification) return false;
+    
     switch (activeTab) {
       case 'unread':
         return !notification.isRead;
@@ -113,8 +179,11 @@ const NotificationsPage: React.FC = () => {
     }
   });
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-  const followRequestsCount = notifications.filter(n => n.type === 'follow_request' && !n.isRead).length;
+  // Contadores seguros
+  const unreadCount = notifications.filter(n => n && !n.isRead).length;
+  const followRequestsCount = notifications.filter(n => n && n.type === 'follow_request' && !n.isRead).length;
+  const followingCount = following.filter(f => f && f.target_mindop && f.target_mindop.id).length;
+  const followersCount = followers.filter(f => f && f.requester_mindop && f.requester_mindop.id).length;
   
   const handleMarkAsRead = (id: string) => {
     setNotifications(prev =>
@@ -131,13 +200,14 @@ const NotificationsPage: React.FC = () => {
       prev.map(notification => ({ ...notification, isRead: true }))
     );
   };
+
   const handleAcceptRequest = async (notificationId: string, followRequestId: string) => {
-    // CRITICAL: Wait for auth to stabilize before accepting follow requests
-    if (authLoading) {
-      console.log('🔄 [NotificationsPage] Auth still loading, cannot accept follow request');
+    // Wait for mindop to be initialized
+    if (!mindOpInitialized) {
+      console.log('🔄 [NotificationsPage] MindOp not initialized, cannot accept follow request');
       setActionErrors(prev => ({ 
         ...prev, 
-        [notificationId]: 'Autenticación en proceso, intenta de nuevo en un momento' 
+        [notificationId]: 'Inicializando aplicación, intenta de nuevo en un momento' 
       }));
       return;
     }
@@ -172,13 +242,15 @@ const NotificationsPage: React.FC = () => {
         [notificationId]: 'Error interno al procesar la solicitud' 
       }));
     }
-  };  const handleRejectRequest = async (notificationId: string, followRequestId: string) => {
-    // CRITICAL: Wait for auth to stabilize before rejecting follow requests
-    if (authLoading) {
-      console.log('🔄 [NotificationsPage] Auth still loading, cannot reject follow request');
+  };
+
+  const handleRejectRequest = async (notificationId: string, followRequestId: string) => {
+    // Wait for mindop to be initialized
+    if (!mindOpInitialized) {
+      console.log('🔄 [NotificationsPage] MindOp not initialized, cannot reject follow request');
       setActionErrors(prev => ({ 
         ...prev, 
-        [notificationId]: 'Autenticación en proceso, intenta de nuevo en un momento' 
+        [notificationId]: 'Inicializando aplicación, intenta de nuevo en un momento' 
       }));
       return;
     }
@@ -213,14 +285,16 @@ const NotificationsPage: React.FC = () => {
         [notificationId]: 'Error interno al procesar la solicitud' 
       }));
     }
-  };  const handleUnfollowMindOp = async (targetMindOpId: string) => {
-    // CRITICAL: Wait for auth to stabilize before unfollowing
-    if (authLoading) {
-      console.log('🔄 [NotificationsPage] Auth still loading, cannot unfollow MindOp');
+  };
+
+  const handleUnfollowMindOp = async (targetMindOpId: string) => {
+    // Wait for mindop to be initialized
+    if (!mindOpInitialized) {
+      console.log('🔄 [NotificationsPage] MindOp not initialized, cannot unfollow MindOp');
       const actionKey = `unfollow-${targetMindOpId}`;
       setConnectionActionErrors(prev => ({ 
         ...prev, 
-        [actionKey]: 'Autenticación en proceso, intenta de nuevo en un momento' 
+        [actionKey]: 'Inicializando aplicación, intenta de nuevo en un momento' 
       }));
       return;
     }
@@ -270,14 +344,16 @@ const NotificationsPage: React.FC = () => {
         [actionKey]: 'Error interno al procesar la solicitud' 
       }));
     }
-  };  const handleRemoveFollower = async (followerMindOpId: string) => {
-    // CRITICAL: Wait for auth to stabilize before removing follower
-    if (authLoading) {
-      console.log('🔄 [NotificationsPage] Auth still loading, cannot remove follower');
+  };
+
+  const handleRemoveFollower = async (followerMindOpId: string) => {
+    // Wait for mindop to be initialized
+    if (!mindOpInitialized) {
+      console.log('🔄 [NotificationsPage] MindOp not initialized, cannot remove follower');
       const actionKey = `remove-${followerMindOpId}`;
       setConnectionActionErrors(prev => ({ 
         ...prev, 
-        [actionKey]: 'Autenticación en proceso, intenta de nuevo en un momento' 
+        [actionKey]: 'Inicializando aplicación, intenta de nuevo en un momento' 
       }));
       return;
     }
@@ -325,7 +401,8 @@ const NotificationsPage: React.FC = () => {
       setConnectionActionErrors(prev => ({
         ...prev, 
         [actionKey]: 'Error interno al procesar la solicitud' 
-      }));    }
+      }));    
+    }
   };
 
   const getNotificationIcon = (type: string) => {
@@ -365,6 +442,21 @@ const NotificationsPage: React.FC = () => {
     return date.toLocaleDateString();
   };
 
+  // Mostrar loading mientras se inicializa
+  if (!mindOpInitialized) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+            <p className="text-gray-600">Inicializando notificaciones...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Mostrar mensaje si no hay MindOp
   if (!userMindOpId) {
     return (
       <div className="max-w-4xl mx-auto p-6">
@@ -378,8 +470,7 @@ const NotificationsPage: React.FC = () => {
                 <a href="/my-mindop" className="underline">Configura tu MindOp aquí</a>
               </p>
             </div>
-          </div>
-        </div>
+          </div>        </div>
       </div>
     );
   }
@@ -482,11 +573,12 @@ const NotificationsPage: React.FC = () => {
           {/* Tabs */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="border-b border-gray-200">
-              <nav className="flex">                {[
+              <nav className="flex">
+                {[
                   { key: 'all', label: 'Todas', count: notifications.length },
                   { key: 'unread', label: 'No leídas', count: unreadCount },
                   { key: 'follow_requests', label: 'Solicitudes', count: followRequestsCount },
-                  { key: 'connections', label: 'Mis Conexiones', count: following.length + followers.length }
+                  { key: 'connections', label: 'Mis Conexiones', count: followingCount + followersCount }
                 ].map((tab) => (
                   <button
                     key={tab.key}
@@ -496,7 +588,8 @@ const NotificationsPage: React.FC = () => {
                         ? 'border-black text-black'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
-                  >                    {tab.label}
+                  >
+                    {tab.label}
                     {tab.count > 0 && tab.key !== 'connections' && (
                       <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
                         activeTab === tab.key ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
@@ -504,17 +597,19 @@ const NotificationsPage: React.FC = () => {
                         {tab.count}
                       </span>
                     )}
-                    {tab.key === 'connections' && (following.length + followers.length) > 0 && (
+                    {tab.key === 'connections' && (followingCount + followersCount) > 0 && (
                       <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
                         activeTab === tab.key ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
                       }`}>
-                        {following.length + followers.length}
+                        {followingCount + followersCount}
                       </span>
                     )}
                   </button>
                 ))}
               </nav>
-            </div>            {/* Lista de notificaciones */}
+            </div>
+
+            {/* Lista de notificaciones */}
             {activeTab === 'connections' ? (
               /* Sección de Mis Conexiones */
               <div>
@@ -532,7 +627,7 @@ const NotificationsPage: React.FC = () => {
                       >
                         <div className="flex items-center space-x-2">
                           <Heart className="w-4 h-4" />
-                          <span>Siguiendo ({following.length})</span>
+                          <span>Siguiendo ({followingCount})</span>
                         </div>
                       </button>
                       <button
@@ -545,7 +640,7 @@ const NotificationsPage: React.FC = () => {
                       >
                         <div className="flex items-center space-x-2">
                           <Users className="w-4 h-4" />
-                          <span>Seguidores ({followers.length})</span>
+                          <span>Seguidores ({followersCount})</span>
                         </div>
                       </button>
                     </nav>
@@ -574,7 +669,7 @@ const NotificationsPage: React.FC = () => {
                   <div className="divide-y divide-gray-200">
                     {connectionsTab === 'following' && (
                       <>
-                        {following.length === 0 ? (
+                        {followingCount === 0 ? (
                           <div className="p-8 text-center">
                             <div className="text-6xl mb-4">💙</div>
                             <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -592,14 +687,16 @@ const NotificationsPage: React.FC = () => {
                             </a>
                           </div>
                         ) : (
-                          following.map((connection) => {
-                            const mindOp = connection.target_mindop;
-                            const actionKey = `unfollow-${mindOp.id}`;
-                            const actionState = connectionActionStates[actionKey] || 'idle';
-                            const actionError = connectionActionErrors[actionKey];
+                          following
+                            .filter(connection => connection && connection.target_mindop && connection.target_mindop.id)
+                            .map((connection) => {
+                              const mindOp = connection.target_mindop;
+                              const actionKey = `unfollow-${mindOp.id}`;
+                              const actionState = connectionActionStates[actionKey] || 'idle';
+                              const actionError = connectionActionErrors[actionKey];
 
-                            return (
-                              <div key={connection.id} className="p-6 hover:bg-gray-50 transition-colors">
+                              return (
+                                <div key={connection.id} className="p-6 hover:bg-gray-50 transition-colors">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
                                     <div className="flex items-center space-x-3 mb-2">
@@ -623,7 +720,7 @@ const NotificationsPage: React.FC = () => {
                                       </div>
                                     )}
                                   </div>
-                                    <button
+                                  <button
                                     onClick={() => handleUnfollowMindOp(mindOp.id)}
                                     disabled={actionState === 'loading'}
                                     className="px-3 py-1.5 bg-red-50 text-red-600 text-sm rounded-md hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center space-x-2 border border-red-200"
@@ -647,7 +744,7 @@ const NotificationsPage: React.FC = () => {
 
                     {connectionsTab === 'followers' && (
                       <>
-                        {followers.length === 0 ? (
+                        {followersCount === 0 ? (
                           <div className="p-8 text-center">
                             <div className="text-6xl mb-4">👥</div>
                             <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -658,14 +755,16 @@ const NotificationsPage: React.FC = () => {
                             </p>
                           </div>
                         ) : (
-                          followers.map((connection) => {
-                            const mindOp = connection.requester_mindop;
-                            const actionKey = `remove-${mindOp.id}`;
-                            const actionState = connectionActionStates[actionKey] || 'idle';
-                            const actionError = connectionActionErrors[actionKey];
+                          followers
+                            .filter(connection => connection && connection.requester_mindop && connection.requester_mindop.id)
+                            .map((connection) => {
+                              const mindOp = connection.requester_mindop;
+                              const actionKey = `remove-${mindOp.id}`;
+                              const actionState = connectionActionStates[actionKey] || 'idle';
+                              const actionError = connectionActionErrors[actionKey];
 
-                            return (
-                              <div key={connection.id} className="p-6 hover:bg-gray-50 transition-colors">
+                              return (
+                                <div key={connection.id} className="p-6 hover:bg-gray-50 transition-colors">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
                                     <div className="flex items-center space-x-3 mb-2">
@@ -689,7 +788,7 @@ const NotificationsPage: React.FC = () => {
                                       </div>
                                     )}
                                   </div>
-                                    <button
+                                  <button
                                     onClick={() => handleRemoveFollower(mindOp.id)}
                                     disabled={actionState === 'loading'}
                                     className="px-3 py-1.5 bg-red-50 text-red-600 text-sm rounded-md hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center space-x-2 border border-red-200"
@@ -756,7 +855,8 @@ const NotificationsPage: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <h4 className="text-sm font-medium text-gray-900">
                               {notification.title}
-                            </h4>                            <div className="flex items-center space-x-2">
+                            </h4>
+                            <div className="flex items-center space-x-2">
                               <span className="text-xs text-gray-500 flex items-center">
                                 <Clock className="w-3 h-3 mr-1" />
                                 {formatTimestamp(notification.createdAt)}
@@ -823,7 +923,8 @@ const NotificationsPage: React.FC = () => {
                           )}
                         </div>
                       </div>
-                    </div>                  );
+                    </div>
+                  );
                 })
               )}
             </div>

@@ -3,6 +3,7 @@ import { Loader2, ChevronDown, Users, User, Send, MessageSquare, Plus, Trash2, M
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import { supabase } from '@/services/supabaseClient';
+import { useMindOp } from '@/hooks/useMindOp';
 
 interface ConversationMessage {
   id: number;
@@ -67,7 +68,9 @@ interface StoredMessage {
 }
 
 const ChatPage: React.FC = () => {
-  const { user, userMindOpId, loading } = useAuth();
+  const { user } = useAuth();
+  const { mindop: userMindOp, initialized: mindOpInitialized } = useMindOp();
+  const userMindOpId = userMindOp?.id || null;
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [requestInProgress, setRequestInProgress] = useState<string | null>(null);
@@ -189,37 +192,35 @@ Puedes preguntarme sobre:
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showTargetSelector]);  // Cargar conexiones del usuario al montar el componente
   useEffect(() => {
-    const initializePageData = async () => {
-      // CRITICAL: Wait for auth to be fully stabilized
-      // Don't proceed until loading is false AND we have checked for userMindOpId
-      if (loading) {
-        console.log('🔄 [ChatPage] Auth still loading, waiting...', { loading, userMindOpId });
-        return;
-      }
+   // Cambiar la función `initializePageData` dentro del useEffect:
+const initializePageData = async () => {
+  // Wait for mindop to be initialized
+  if (!mindOpInitialized) {
+    console.log('🔄 [ChatPage] Waiting for mindop initialization...');
+    return;
+  }
 
-      // At this point, auth is stable - user may or may not have a MindOp
-      if (!userMindOpId) {
-        console.log('ℹ️ [ChatPage] User has no MindOp yet, skipping data initialization');
-        return;
-      }
+  if (!userMindOpId) {
+    console.log('ℹ️ [ChatPage] User has no MindOp yet, skipping data initialization');
+    return;
+  }
 
-      console.log('✅ [ChatPage] Auth stabilized with MindOp, initializing page data...', { userMindOpId });
+  console.log('✅ [ChatPage] MindOp initialized, loading page data...', { userMindOpId });
 
-      try {
-        console.log('🔄 [ChatPage] Initializing page data...');
-        await Promise.all([
-          loadUserConnections(),
-          initializeCollaborationTargets(),
-          loadConversationList()
-        ]);
-        console.log('✅ [ChatPage] Page data initialized successfully');
-      } catch (error) {
-        console.error('❌ [ChatPage] Error initializing page data:', error);
-      }
-    };
+  try {
+    await Promise.all([
+      loadUserConnections(),
+      initializeCollaborationTargets(),
+      loadConversationList()
+    ]);
+    console.log('✅ [ChatPage] Page data initialized successfully');
+  } catch (error) {
+    console.error('❌ [ChatPage] Error initializing page data:', error);
+  }
+};
 
-    initializePageData();
-  }, [userMindOpId, loading]); // Agregar loading como dependencia
+initializePageData();
+}, [userMindOpId, mindOpInitialized]); // ✅ Cambiar dependencias
 
   // Inicializar targets disponibles cuando cambian las conexiones
   useEffect(() => {
@@ -897,9 +898,20 @@ Puedes preguntarme sobre:
   };
 
   // === END CONVERSATION MANAGEMENT FUNCTIONS ===
-  // Note: Message saving is now handled by the backend mindop-service
-  // which automatically creates conversations and saves messages
   
+
+  // Agregar esto justo antes del return principal:
+
+  if (!mindOpInitialized) {
+  return (
+    <div className="h-full flex items-center justify-center bg-gray-50">
+      <div className="flex flex-col items-center space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+        <p className="text-gray-600">Inicializando chat...</p>
+      </div>
+    </div>
+  );
+  }
   return (    <div className="h-full flex bg-gray-50 overflow-hidden relative">
       {/* Sidebar de Conversaciones */}
       <div className={`${

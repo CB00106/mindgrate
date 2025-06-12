@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, Loader2, Brain, Users, Check, AlertCircle } from 'lucide-react';
 import { supabase } from '@/services/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
+import { useMindOp } from '@/hooks/useMindOp';
 import { CreateFollowRequestData } from '@/types/mindops';
 
 interface MindopSearchResult {
@@ -27,31 +28,29 @@ interface FollowRequestError {
 }
 
 const SearchPage: React.FC = () => {
-  const { userMindOpId, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
+  const { mindop: userMindOp, initialized: mindOpInitialized } = useMindOp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<MindopSearchResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [followRequestStates, setFollowRequestStates] = useState<FollowRequestState>({});
-  const [followRequestErrors, setFollowRequestErrors] = useState<FollowRequestError>({});  const callSearchService = async (searchTerm: string): Promise<SearchResponse> => {
-    // CRITICAL: Wait for auth to stabilize before making search requests
-    if (authLoading) {
-      console.log('🔄 [SearchPage] Waiting for auth stabilization before search...');
-      throw new Error('Autenticación en proceso, intenta de nuevo en un momento');
+  const [followRequestErrors, setFollowRequestErrors] = useState<FollowRequestError>({});
+
+  // Extraer el ID del MindOp del usuario
+  const userMindOpId = userMindOp?.id || null;
+  const callSearchService = async (searchTerm: string): Promise<SearchResponse> => {
+    // Wait for auth to stabilize before making search requests
+    if (authLoading || !mindOpInitialized) {
+      throw new Error('Inicializando aplicación, intenta de nuevo en un momento');
     }
 
     const { data: { session } } = await supabase.auth.getSession();
     
-    console.log('🔐 Sesión actual:', !!session);
-    console.log('🔑 Token disponible:', !!session?.access_token);
-    
     if (!session?.access_token) {
       throw new Error('No hay sesión activa');
     }
-
-    console.log('🔍 Buscando MindOps con término:', searchTerm);
-    console.log('🌐 URL de función:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search-mindops?searchTerm=${encodeURIComponent(searchTerm)}`);
     
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search-mindops?searchTerm=${encodeURIComponent(searchTerm)}`,
@@ -63,12 +62,8 @@ const SearchPage: React.FC = () => {
       }
     );
 
-    console.log('📊 Response status:', response.status);
-    console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Error response text:', errorText);
       
       try {
         const errorData = JSON.parse(errorText);
@@ -79,7 +74,6 @@ const SearchPage: React.FC = () => {
     }
 
     const result = await response.json();
-    console.log('✅ Search result:', result);
     return result;
   };
 
@@ -100,21 +94,19 @@ const SearchPage: React.FC = () => {
       } else {
         setError('Error en la búsqueda');
         setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('❌ Error en búsqueda:', error);
+      }    } catch (error) {
       setError(error instanceof Error ? error.message : 'Error al buscar MindOps');
       setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
-  };  const handleRequestFollow = async (targetMindOpId: string) => {
-    // CRITICAL: Wait for auth to stabilize before making follow requests
-    if (authLoading) {
-      console.log('🔄 [SearchPage] Waiting for auth stabilization before follow request...');
+  };
+
+  const handleRequestFollow = async (targetMindOpId: string) => {    // Wait for auth/mindop to stabilize before making follow requests
+    if (authLoading || !mindOpInitialized) {
       setFollowRequestErrors({
         ...followRequestErrors,
-        [targetMindOpId]: 'Autenticación en proceso, intenta de nuevo en un momento'
+        [targetMindOpId]: 'Inicializando aplicación, intenta de nuevo en un momento'
       });
       return;
     }
@@ -147,22 +139,17 @@ const SearchPage: React.FC = () => {
       [targetMindOpId]: 'loading'
     });
 
-    try {
-      // Crear solicitud de seguimiento
+    try {      // Crear solicitud de seguimiento
       const followRequestData: CreateFollowRequestData = {
         requester_mindop_id: userMindOpId,
         target_mindop_id: targetMindOpId
       };
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('follow_requests')
         .insert(followRequestData)
         .select()
-        .single();
-
-      if (error) {
-        console.error('Error al crear solicitud de seguimiento:', error);
-        
+        .single();if (error) {
         // Manejar errores específicos
         let errorMessage = 'Error al enviar solicitud de seguimiento.';
         
@@ -183,17 +170,12 @@ const SearchPage: React.FC = () => {
           [targetMindOpId]: errorMessage
         });
         return;
-      }
-
-      // Éxito
+      }      // Éxito
       setFollowRequestStates({
         ...followRequestStates,
         [targetMindOpId]: 'success'
       });
-      
-      console.log('✅ Solicitud de seguimiento enviada:', data);
     } catch (error) {
-      console.error('❌ Error inesperado:', error);
       setFollowRequestStates({
         ...followRequestStates,
         [targetMindOpId]: 'error'
@@ -205,8 +187,23 @@ const SearchPage: React.FC = () => {
     }
   };
 
+  // Mostrar loading mientras se inicializa
+  if (!mindOpInitialized) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+            <p className="text-gray-600">Inicializando búsqueda...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto p-6">      {/* Header */}
+    <div className="max-w-4xl mx-auto p-6">
+      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Buscador de MindOps
@@ -214,9 +211,7 @@ const SearchPage: React.FC = () => {
         <p className="text-gray-600">
           Descubre y explora MindOps de otros usuarios en la plataforma
         </p>
-      </div>
-
-      {/* User MindOp Status Alert */}
+      </div>      {/* User MindOp Status Alert */}
       {!userMindOpId && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
           <div className="flex items-start space-x-3">
@@ -231,7 +226,7 @@ const SearchPage: React.FC = () => {
         </div>
       )}
 
-      {/* Search Form */}
+          {/* Search Form */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <form onSubmit={handleSearch} className="space-y-4">
           <div className="flex space-x-3">
@@ -344,7 +339,8 @@ const SearchPage: React.FC = () => {
                           <Users className="w-4 h-4" />
                           <span>Público</span>
                         </div>
-                      </div>                    </div>
+                      </div>
+                    </div>
                     
                     <div className="ml-6 flex flex-col items-end space-y-2">
                       <button 
@@ -430,4 +426,6 @@ const SearchPage: React.FC = () => {
       )}
     </div>
   );
-};export default SearchPage;
+};
+
+export default SearchPage;
