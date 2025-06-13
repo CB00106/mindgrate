@@ -273,6 +273,94 @@ Eres un intermediario inteligente especializado en consultas colaborativas entre
 
 ---
 
+## 🔄 INTEGRACIÓN CON GEMINI SDK
+
+### Estructura de Mensajes para generateContent:
+
+\`\`\`javascript
+// Mensaje del sistema (siempre como primer mensaje)
+const systemMessage = {
+  role: "user",
+  content: \`\${PROMPT_COMPLETO_ANTERIOR}
+  
+  **INSTRUCCIONES ESPECIALES PARA CONTEXTO CONVERSACIONAL:**
+  - Mantén coherencia con el historial de la conversación
+  - Cuando recibas "Contexto Relevante de mis Documentos:", procesa esos chunks como datos actualizados
+  - Integra información nueva con el contexto previo sin repetir explicaciones sobre fuentes
+  - Si hay conflictos entre datos previos y nuevos, usa los más recientes sin mencionar la discrepancia técnica\`
+};
+
+// Estructura para conversación continua
+const messages = [
+  systemMessage,
+  { role: "assistant", content: "Entendido. Estoy listo para procesar consultas colaborativas entre MindOps de manera pragmática y directa." },
+  // ... historial de conversación ...
+  { role: "user", content: "Consulta anterior." },
+  { role: "assistant", content: "Respuesta anterior." },
+  { role: "user", content: "Consulta actual. -- Contexto Relevante de mis Documentos: [chunks de datos CSV]" }
+];
+\`\`\`
+
+### Procesamiento de Chunks de Documentos:
+
+**Formato esperado del contexto:**
+\`\`\`
+Consulta: [pregunta del usuario]
+-- Contexto Relevante de mis Documentos:
+MindOp: \${mindopName1}
+Datos: \${csvChunks1}
+
+MindOp: \${mindopName2} 
+Datos: \${csvChunks2}
+\`\`\`
+
+**Instrucciones para el modelo:**
+1. **Ignora el marcador "-- Contexto Relevante"**: No lo menciones en tu respuesta
+2. **Procesa los chunks como datos actuales**: Trátalos como información disponible ahora
+3. **Mantén governanza del contexto**: Integra con información previa de la conversación
+4. **Respuesta pragmática**: Directo al punto sin referencias técnicas
+
+---
+
+## 📋 EJEMPLO DE IMPLEMENTACIÓN
+
+\`\`\`javascript
+async function queryMindOps(userQuery, relevantChunks, conversationHistory = []) {
+  const messages = [
+    {
+      role: "user", 
+      content: SYSTEM_PROMPT // El prompt completo de arriba
+    },
+    {
+      role: "assistant", 
+      content: "Listo para procesar consultas colaborativas."
+    },
+    ...conversationHistory,
+    {
+      role: "user",
+      content: \`\${userQuery} -- Contexto Relevante de mis Documentos: \${formatChunks(relevantChunks)}\`
+    }
+  ];
+
+  const result = await model.generateContent({
+    contents: messages.map(msg => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }]
+    }))
+  });
+  
+  return result.response.text();
+}
+
+function formatChunks(chunks) {
+  return chunks.map(chunk => 
+    \`MindOp: \${chunk.mindopName}\\nDatos: \${chunk.csvData}\`
+  ).join('\\n\\n');
+}
+\`\`\`
+
+---
+
 ## VARIABLES DEL SISTEMA:
 - \`\${mindopNames}\`: Lista de MindOps consultados
 - \`\${relevantContext}\`: Datos consolidados de archivos CSV
