@@ -1,177 +1,295 @@
-# MindOps - Intelligent Data Management Platform
+# Mindgrate - Infraestructura Colaborativa de IA
 
-Una plataforma inteligente de gestión de datos construida con React, TypeScript, Vite, Tailwind CSS y Supabase. MindOps permite a los usuarios gestionar, analizar y colaborar con sus datos de manera conversacional.
+Una plataforma innovadora de inteligencia artificial colaborativa que permite crear, gestionar y colaborar con MindOps (operaciones mentales inteligentes). Construida con React, TypeScript, Vite, Tailwind CSS y Supabase.
+
+## 🌟 ¿Qué es Mindgrate?
+
+Mindgrate no es un chatbot ni una suite tradicional de herramientas. Es una **infraestructura colaborativa de inteligencia artificial** donde cada agente es una unidad inteligente que forma parte de una red segura, modular y adaptable.
+
+### 🧠 Concepto de MindOp
+
+Un **MindOp** (Mind Operation) es tu espacio de trabajo personalizado donde defines y ejecutas operaciones mentales estructuradas. Cada MindOp puede:
+
+- Procesar y analizar datos CSV mediante vectorización
+- Realizar búsquedas semánticas avanzadas
+- Colaborar con otros MindOps de manera inteligente
+- Mantener conversaciones contextuales persistentes
 
 ## ✨ Características Principales
 
-### 🧠 Chat Inteligente con IA
-- **Conversaciones persistentes**: Manejo completo de historial de conversaciones
-- **Interfaz tipo ChatGPT**: Sidebar con lista de conversaciones, búsqueda y gestión
-- **Múltiples conversaciones**: Crea, carga, elimina y cambia entre conversaciones
-- **Contexto inteligente**: Mantiene el contexto de cada conversación independientemente
+### � Chat Inteligente Conversacional
+- **Interfaz ChatGPT-like**: Sidebar con gestión completa de conversaciones
+- **Historial persistente**: Todas las conversaciones se guardan automáticamente
+- **Búsqueda de conversaciones**: Encuentra rápidamente conversaciones anteriores
+- **Contexto inteligente**: Cada conversación mantiene su contexto independiente
+- **Respuestas en tiempo real**: Sistema de streaming para respuestas fluidas
 
-### 🤝 Sistema de Colaboración
+### 🤝 Sistema de Colaboración Avanzado
 - **Colaboración entre MindOps**: Conecta y colabora con otros usuarios
 - **Consultas dirigidas**: Haz preguntas específicas a MindOps conectados
-- **Respuestas en tiempo real**: Sistema de polling para recibir respuestas automáticamente
-- **Notificaciones inteligentes**: Recibe alertas cuando hay respuestas disponibles
+- **Notificaciones inteligentes**: Recibe alertas automáticas de nuevas respuestas
+- **Gestión de conexiones**: Sistema robusto para manejar colaboraciones
+- **Debug y diagnóstico**: Herramientas integradas para diagnosticar conexiones
 
-### 💾 Gestión de Datos
-- **Carga de archivos CSV**: Importa y procesa datos automáticamente
-- **Análisis inteligente**: IA analiza patrones y tendencias en tus datos
-- **Búsqueda conversacional**: Haz preguntas en lenguaje natural sobre tus datos
-- **Visualización de resultados**: Tablas y resúmenes automáticos
+### 💾 Gestión Inteligente de Datos CSV
+- **Carga y procesamiento**: Importa CSV y convierte datos en embeddings vectoriales
+- **Listado de archivos**: Ve todos tus archivos CSV cargados con detalles
+- **Eliminación segura**: Elimina archivos con confirmación y validación de propiedad
+- **Estados de vectorización**: Monitorea el progreso del procesamiento
+- **Análisis conversacional**: Haz preguntas en lenguaje natural sobre tus datos
 
-### 🔐 Autenticación y Seguridad
-- **Autenticación segura**: Sistema completo de registro y login
-- **Gestión de usuarios**: Perfiles de usuario y configuración de MindOps
-- **Privacidad de datos**: Cada usuario tiene acceso solo a sus datos
+### 🔐 Autenticación y Seguridad Robusta
+- **Autenticación completa**: Registro, login, recuperación de contraseña
+- **Perfiles de usuario**: Gestión completa de información personal
+- **Privacidad de datos**: Cada usuario accede solo a sus propios datos
+- **Validación de propiedad**: Sistema de verificación para operaciones sensibles
+
+### 🏗️ Arquitectura Edge Functions
+- **Supabase Edge Functions**: Backend serverless para operaciones complejas
+- **Funciones desplegadas**:
+  - `collaboration-worker`: Maneja colaboraciones entre MindOps
+  - `ingest-csv-data`: Procesa y vectoriza archivos CSV
+  - `delete-document`: Eliminación segura de documentos
 
 ## 🚀 Tecnologías
 
-- **React 18** - Librería de interfaz de usuario
-- **TypeScript** - Tipado estático
-- **Vite** - Herramienta de desarrollo y construcción rápida
-- **Tailwind CSS** - Framework CSS utilitario
-- **Supabase** - Backend-as-a-Service (autenticación, base de datos)
-- **React Router** - Navegación del lado del cliente
+### Frontend
+- **React 18** con hooks avanzados
+- **TypeScript** para tipado estático robusto
+- **Vite** para desarrollo y construcción rápida
+- **Tailwind CSS** para styling moderno y responsivo
+- **Framer Motion** para animaciones fluidas
+- **React Router** para navegación SPA
 
-## 📦 Instalación
+### Backend & Servicios
+- **Supabase** - Backend-as-a-Service completo
+  - PostgreSQL database con RLS (Row Level Security)
+  - Edge Functions para lógica de negocio
+  - Autenticación y autorización
+  - Real-time subscriptions
+- **OpenAI API** para procesamiento de lenguaje natural
+- **Embeddings vectoriales** para búsqueda semántica
 
-1. Clona el repositorio:
+## 📦 Instalación y Configuración
+
+### Prerrequisitos
+- Node.js 18+ 
+- npm o yarn
+- Cuenta de Supabase
+- Cuenta de OpenAI (para funcionalidades de IA)
+
+### 1. Clonación e Instalación
 ```bash
 git clone <repository-url>
-cd mindgrate-mvp
-```
-
-2. Instala las dependencias:
-```bash
+cd mindgrate
 npm install
 ```
 
-3. Configura las variables de entorno:
+### 2. Configuración de Variables de Entorno
 ```bash
 cp .env.example .env
 ```
 
-Edita el archivo `.env` y agrega tus credenciales de Supabase:
+Configura tu archivo `.env`:
 ```env
+# Supabase Configuration
 VITE_SUPABASE_URL=tu-url-de-supabase
 VITE_SUPABASE_ANON_KEY=tu-clave-anonima-de-supabase
+
+# OpenAI Configuration (para Edge Functions)
+OPENAI_API_KEY=tu-api-key-de-openai
+```
+
+### 3. Configuración de Supabase
+
+#### Instalar CLI de Supabase
+```bash
+npm install -g @supabase/cli
+supabase login
+```
+
+#### Vincular proyecto local
+```bash
+supabase link --project-ref tu-project-id
+```
+
+#### Ejecutar migraciones
+```bash
+supabase db push
+```
+
+#### Desplegar Edge Functions
+```bash
+supabase functions deploy collaboration-worker
+supabase functions deploy ingest-csv-data  
+supabase functions deploy delete-document
 ```
 
 ## 🛠️ Desarrollo
 
-Inicia el servidor de desarrollo:
+### Comandos Principales
 ```bash
-npm run dev
+# Desarrollo
+npm run dev                 # Servidor de desarrollo (puerto 3000)
+
+# Construcción
+npm run build              # Build para producción
+npm run preview            # Preview de build
+
+# Calidad de código
+npm run lint               # ESLint
+npm run type-check         # Verificación TypeScript
+
+# Supabase local
+supabase start            # Base de datos local
+supabase stop             # Detener servicios locales
 ```
 
-La aplicación estará disponible en `http://localhost:3000`
-
-## 📁 Estructura del Proyecto
-
+### Estructura del Proyecto
 ```
-src/
-├── components/          # Componentes reutilizables (.tsx)
-│   ├── layout/         # Componentes de layout (Header, Footer, etc.)
-│   └── index.ts        # Exportaciones de componentes
-├── pages/              # Vistas de página completas (.tsx)
-├── services/           # Lógica de Supabase y otras APIs
-│   └── supabaseClient.ts
-├── contexts/           # Context API para estado global (.tsx)
-├── types/              # Definiciones de tipos TypeScript
-├── hooks/              # Hooks personalizados
-├── utils/              # Funciones utilitarias
-└── assets/             # Recursos estáticos (imágenes, fuentes, etc.)
+mindgrate/
+├── src/
+│   ├── components/          # Componentes reutilizables
+│   │   ├── layout/         # Header, Footer, etc.
+│   │   ├── AuthPage.tsx    # Componentes de autenticación
+│   │   ├── Button.tsx      # Botones reutilizables
+│   │   └── index.ts        # Exportaciones
+│   ├── pages/              # Páginas principales
+│   │   ├── Home.tsx        # Landing page
+│   │   ├── ChatPage.tsx    # Chat principal
+│   │   ├── MyMindOpPage.tsx # Gestión de MindOp
+│   │   ├── ProfilePage.tsx # Perfil de usuario
+│   │   └── SearchPage.tsx  # Búsqueda colaborativa
+│   ├── services/           # Lógica de negocio
+│   │   ├── supabaseClient.ts
+│   │   ├── notificationService.ts
+│   │   └── collaborationService.ts
+│   ├── contexts/           # Context API
+│   │   └── AuthContext.tsx
+│   ├── hooks/              # Hooks personalizados
+│   │   ├── useAuth.ts
+│   │   └── useMindOp.ts
+│   ├── types/              # Definiciones TypeScript
+│   └── utils/              # Utilidades
+├── supabase/
+│   ├── functions/          # Edge Functions
+│   │   ├── collaboration-worker/
+│   │   ├── ingest-csv-data/
+│   │   └── delete-document/
+│   └── migrations/         # Migraciones de DB
+├── scripts/                # Scripts de utilidades
+└── sql-scripts/           # Scripts SQL adicionales
 ```
 
-## 🔧 Scripts Disponibles
+## 🎯 Funcionalidades Implementadas
 
-- `npm run dev` - Inicia el servidor de desarrollo
-- `npm run build` - Construye la aplicación para producción
-- `npm run preview` - Previsualiza la build de producción
-- `npm run lint` - Ejecuta ESLint
-- `npm run type-check` - Verifica tipos TypeScript
+### ✅ Autenticación Completa
+- [x] Registro e inicio de sesión
+- [x] Recuperación de contraseña
+- [x] Gestión de perfil de usuario
+- [x] Validación de sesiones
 
-## 🎨 Características
+### ✅ Gestión de MindOps
+- [x] Creación y configuración de MindOps
+- [x] Carga de archivos CSV
+- [x] Vectorización automática de datos
+- [x] Listado y gestión de archivos
+- [x] Eliminación segura de documentos
 
-- ✅ Configuración optimizada de TypeScript
-- ✅ Tailwind CSS integrado y configurado
-- ✅ SDK de Supabase instalado y configurado
-- ✅ Context API para gestión de autenticación
-- ✅ Componentes reutilizables con Tailwind
-- ✅ Routing configurado con React Router
-- ✅ Layout responsivo y moderno
-- ✅ Path aliases configurados (@/* imports)
+### ✅ Chat Inteligente
+- [x] Interfaz de chat moderna
+- [x] Historial de conversaciones
+- [x] Búsqueda de conversaciones
+- [x] Respuestas contextuales con IA
 
-## 🔐 Autenticación
+### ✅ Sistema de Colaboración
+- [x] Conexiones entre MindOps
+- [x] Consultas dirigidas
+- [x] Notificaciones automáticas
+- [x] Debug y diagnóstico de conexiones
 
-La aplicación incluye un sistema de autenticación completo usando Supabase:
+### ✅ Arquitectura Robusta
+- [x] Edge Functions desplegadas
+- [x] Base de datos con RLS
+- [x] Manejo de errores completo
+- [x] Logging y debugging
 
-- Registro de usuarios
-- Inicio de sesión
-- Gestión de sesiones
-- Context API para estado de autenticación
+## 🔮 Próximas Funcionalidades
 
-## 📱 Componentes
+### � Conexión Multi-fuente y Visualizaciones
+- Conecta agentes a herramientas externas
+- Genera dashboards automáticos
+- Gráficos de Gantt dinámicos
 
-### Layout
-- `Header` - Barra de navegación responsiva
+### ⚡ Colaboración Inteligente (A2A)
+- Colaboración entre agentes automática
+- Ejecución de tareas conjuntas
+- Workflows inteligentes
 
-### Páginas
-- `Home` - Página de inicio
-- `Dashboard` - Panel de control
-- `Login` - Formulario de inicio de sesión
-- `Register` - Formulario de registro
-- `NotFound` - Página 404
-
-### Componentes UI
-- `Button` - Componente de botón reutilizable con variantes
+### 🛡️ Gobernanza Avanzada
+- Control granular de permisos
+- Auditoría de acciones
+- Políticas de datos personalizables
 
 ## 🚀 Despliegue
 
-Para construir la aplicación para producción:
-
+### Construcción para Producción
 ```bash
 npm run build
 ```
 
-Los archivos de construcción se generarán en la carpeta `dist/`.
+### Deploy en Vercel/Netlify
+La aplicación está optimizada para deployment en plataformas modernas:
+
+1. Conecta tu repositorio
+2. Configura variables de entorno
+3. Deploy automático desde main branch
+
+### Variables de Entorno en Producción
+```env
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_ANON_KEY=tu-key-de-produccion
+```
+
+## 🤝 Contribución
+
+### Proceso de Desarrollo
+1. Fork del repositorio
+2. Crear rama feature: `git checkout -b feature/nueva-funcionalidad`
+3. Commit cambios: `git commit -m 'Añadir nueva funcionalidad'`
+4. Push rama: `git push origin feature/nueva-funcionalidad`  
+5. Crear Pull Request
+
+### Estándares de Código
+- TypeScript estricto
+- ESLint con configuración personalizada
+- Prettier para formateo automático
+- Convenciones de naming consistentes
+
+## 📊 Estado del Proyecto
+
+**Estado Actual**: ✅ **MVP Completado**
+
+### Métricas del Proyecto
+- **Líneas de código**: ~15,000+
+- **Componentes React**: 25+
+- **Edge Functions**: 3 desplegadas
+- **Páginas implementadas**: 8
+- **Hooks personalizados**: 5+
+
+### Testing y Calidad
+- **Coverage**: En desarrollo
+- **E2E Tests**: Planeados
+- **Performance**: Optimizado para Lighthouse
 
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT.
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+Este proyecto está bajo la **Licencia MIT**. Ver el archivo `LICENSE` para más detalles.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 🎯 Visión
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+Mindgrate representa el futuro de la colaboración inteligente, donde la IA no reemplaza el pensamiento humano, sino que lo amplifica a través de una infraestructura colaborativa que evoluciona con cada interacción.
+
+**¿Listo para cambiar tu forma de operar?** 🚀

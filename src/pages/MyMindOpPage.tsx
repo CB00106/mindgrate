@@ -10,7 +10,7 @@ interface FormData {
 
 interface FormErrors {
   mindop_name?: string;
-  csvFile?: string;
+  fileUpload?: string;
 }
 
 const MyMindOpPage: React.FC = () => {
@@ -25,14 +25,12 @@ const MyMindOpPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);  
-  
-  // CSV file handling
+    // File handling
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isVectorizing, setIsVectorizing] = useState(false);
   const [vectorizeMessage, setVectorizeMessage] = useState<string | null>(null);
-  
-  // CSV file management state
-  const [csvFiles, setCsvFiles] = useState<Array<{
+    // Document file management state
+  const [documentFiles, setDocumentFiles] = useState<Array<{
     source_csv_name: string;
     chunk_count: number;
     created_at: string;
@@ -47,14 +45,12 @@ const MyMindOpPage: React.FC = () => {
       setFormData({
         mindop_name: mindop.mindop_name || '',
         mindop_description: mindop.mindop_description || '',
-      });
-      // Load CSV files when MindOp is available
-      loadCsvFiles();
+      });      // Load document files when MindOp is available
+      loadDocumentFiles();
     }
   }, [mindop]);
-
-  // Load CSV files for this MindOp
-  const loadCsvFiles = async () => {
+  // Load document files for this MindOp
+  const loadDocumentFiles = async () => {
     if (!mindop?.id) return;
     
     setIsLoadingFiles(true);
@@ -66,7 +62,7 @@ const MyMindOpPage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error loading CSV files:', error);
+        console.error('Error loading document files:', error);
         return;
       }
 
@@ -95,9 +91,9 @@ const MyMindOpPage: React.FC = () => {
         created_at: info.created_at,
       }));
 
-      setCsvFiles(files);
+      setDocumentFiles(files);
     } catch (error) {
-      console.error('Error loading CSV files:', error);
+      console.error('Error loading document files:', error);
     } finally {
       setIsLoadingFiles(false);
     }
@@ -131,12 +127,10 @@ const MyMindOpPage: React.FC = () => {
 
       if (!response.ok) {
         throw new Error(result.error || 'Error al eliminar el archivo');
-      }
-
-      setSuccessMessage(`Archivo "${fileName}" eliminado exitosamente`);
+      }      setSuccessMessage(`Archivo "${fileName}" eliminado exitosamente`);
       
-      // Reload CSV files list
-      await loadCsvFiles();
+      // Reload document files list
+      await loadDocumentFiles();
       
     } catch (error) {
       console.error('Error deleting CSV file:', error);
@@ -183,15 +177,22 @@ const MyMindOpPage: React.FC = () => {
       }));
     }
   };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      if (!file.name.toLowerCase().endsWith('.csv')) {
+      // Validate file type for spreadsheets (CSV, XLS, XLSX)
+      const fileName = file.name.toLowerCase();
+      const isValidFile = fileName.endsWith('.csv') || 
+                         fileName.endsWith('.xlsx') || 
+                         fileName.endsWith('.xls') ||
+                         file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                         file.type === 'application/vnd.ms-excel' ||
+                         file.type === 'text/csv';
+      
+      if (!isValidFile) {
         setErrors(prev => ({
           ...prev,
-          csvFile: 'Por favor, selecciona un archivo CSV válido',
+          fileUpload: 'Por favor, selecciona un archivo válido (CSV, XLS, XLSX)',
         }));
         setSelectedFile(null);
         return;
@@ -200,7 +201,7 @@ const MyMindOpPage: React.FC = () => {
       // Clear any previous errors
       setErrors(prev => ({
         ...prev,
-        csvFile: undefined,
+        fileUpload: undefined,
       }));
       
       setSelectedFile(file);
@@ -211,25 +212,25 @@ const MyMindOpPage: React.FC = () => {
   };  const handleVectorizeCSVButton = async () => {
     // Check if MindOp exists first
     if (!mindop) {
-      setVectorizeMessage('Error: Debes guardar la configuración del MindOp primero antes de cargar archivos CSV.');
+      setVectorizeMessage('Error: Debes guardar la configuración del MindOp primero antes de cargar archivos.');
       return;
     }
 
     try {
-      await handleVectorizeCSV();
+      await handleVectorizeFile();
     } catch (error) {
-      // Error is already handled in handleVectorizeCSV
-      console.error('CSV vectorization failed:', error);
+      // Error is already handled in handleVectorizeFile
+      console.error('File vectorization failed:', error);
     }
   };
 
-  const handleVectorizeCSV = async (): Promise<void> => {
+  const handleVectorizeFile = async (): Promise<void> => {
     if (!selectedFile) {
       setErrors(prev => ({
         ...prev,
-        csvFile: 'Por favor, selecciona un archivo CSV primero',
+        fileUpload: 'Por favor, selecciona un archivo primero',
       }));
-      throw new Error('No hay archivo CSV seleccionado');
+      throw new Error('No hay archivo seleccionado');
     }
 
     setIsVectorizing(true);
@@ -247,8 +248,8 @@ const MyMindOpPage: React.FC = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      // Call the ingest-csv-data Edge Function
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ingest-csv-data`, {
+      // Call the ingest-spreadsheet-data Edge Function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ingest-spreadsheet-data`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -259,41 +260,43 @@ const MyMindOpPage: React.FC = () => {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.details || result.error || 'Error al procesar el archivo CSV');
-      }      setVectorizeMessage(
-        `¡Archivo CSV procesado exitosamente! Se crearon ${result.chunks_created} chunks de ${result.total_rows_processed} filas.`
+        throw new Error(result.details || result.error || 'Error al procesar el archivo');
+      }      
+
+      const fileType = selectedFile.name.toLowerCase().endsWith('.csv') ? 'CSV' : 'Excel';
+      setVectorizeMessage(
+        `¡Archivo ${fileType} procesado exitosamente! Se crearon ${result.chunks_created} chunks de ${result.total_documents_processed} documentos.`
       );
       
       // Clear the selected file after successful processing
       setSelectedFile(null);
       
       // Reset the file input
-      const fileInput = document.getElementById('csv_file') as HTMLInputElement;
+      const fileInput = document.getElementById('file_upload') as HTMLInputElement;
       if (fileInput) {
         fileInput.value = '';
-      }
-      
-      // Reload CSV files list to show the new file
-      await loadCsvFiles();} catch (error) {
-      console.error('Error vectorizing CSV:', error);
+      }      
+      // Reload files list to show the new file
+      await loadDocumentFiles();} catch (error) {
+      console.error('Error vectorizing file:', error);
       let errorMessage = 'Error desconocido';
       
       if (error instanceof Error) {
         errorMessage = error.message;
         
-        // Provide more user-friendly error messages
-        if (errorMessage.includes('CSV contiene comillas mal formateadas')) {
-          errorMessage = 'CSV con formato incorrecto: Las comillas en tu archivo CSV no están correctamente cerradas. Por favor revisa y corrige el formato de tu archivo.';
-        } else if (errorMessage.includes('archivo CSV tiene un formato inválido')) {
-          errorMessage = 'Archivo CSV inválido: El formato de tu archivo CSV no es correcto. Asegúrate de que esté separado por comas y sin caracteres especiales malformados.';
+        // Provide more user-friendly error messages for Excel files
+        if (errorMessage.includes('Invalid file format')) {
+          errorMessage = 'Archivo con formato incorrecto: El archivo no es un formato válido. Por favor verifica que sea CSV, XLS o XLSX.';
+        } else if (errorMessage.includes('File must be an Excel file')) {
+          errorMessage = 'Tipo de archivo inválido: Solo se aceptan archivos CSV (.csv), Excel (.xls) o Excel (.xlsx).';
         } else if (errorMessage.includes('bare " in non-quoted-field')) {
           errorMessage = 'Error de formato CSV: Hay comillas sin cerrar en tu archivo. Por favor revisa que todas las comillas estén correctamente emparejadas.';
         } else if (errorMessage.includes('parse error')) {
-          errorMessage = 'Error de formato CSV: Tu archivo tiene un formato que no se puede procesar. Verifica que sea un CSV válido separado por comas.';
+          errorMessage = 'Error de formato: Tu archivo tiene un formato que no se puede procesar. Verifica que sea un archivo válido.';
         }
       }
       
-      setVectorizeMessage(`Error al procesar el archivo CSV: ${errorMessage}`);
+      setVectorizeMessage(`Error al procesar el archivo: ${errorMessage}`);
       throw error; // Re-throw to handle in parent function
     } finally {
       setIsVectorizing(false);
@@ -318,17 +321,17 @@ const MyMindOpPage: React.FC = () => {
       };
 
       await saveMindOp(submitData);
-      
-      // Step 2: If there's a CSV file selected, upload it after MindOp is saved
+        // Step 2: If there's a file selected, upload it after MindOp is saved
       if (selectedFile) {
-        console.log('MindOp saved successfully, now uploading CSV file...');
+        console.log('MindOp saved successfully, now uploading file...');
         try {
-          await handleVectorizeCSV();
-          setSuccessMessage('¡Configuración guardada y archivo CSV procesado correctamente!');
-        } catch (csvError) {
-          console.error('Error uploading CSV:', csvError);
-          setSuccessMessage('Configuración guardada correctamente, pero hubo un error al procesar el archivo CSV.');
-          setErrorMessage(`Error al procesar CSV: ${csvError instanceof Error ? csvError.message : 'Error desconocido'}`);
+          await handleVectorizeFile();
+          const fileType = selectedFile.name.toLowerCase().endsWith('.csv') ? 'CSV' : 'Excel';
+          setSuccessMessage(`¡Configuración guardada y archivo ${fileType} procesado correctamente!`);
+        } catch (fileError) {
+          console.error('Error uploading file:', fileError);
+          setSuccessMessage('Configuración guardada correctamente, pero hubo un error al procesar el archivo.');
+          setErrorMessage(`Error al procesar archivo: ${fileError instanceof Error ? fileError.message : 'Error desconocido'}`);
         }
       } else {
         setSuccessMessage('¡Configuración guardada correctamente!');
@@ -523,24 +526,24 @@ const MyMindOpPage: React.FC = () => {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent hover:border-gray-400 transition-colors resize-vertical"
               disabled={isSubmitting}
             />
-          </div>          {/* CSV File Upload */}
+          </div>          {/* File Upload */}
           <div>
-            <label htmlFor="csv_file" className="block text-sm font-medium text-gray-700 mb-2">
-              Cargar Archivo CSV
+            <label htmlFor="file_upload" className="block text-sm font-medium text-gray-700 mb-2">
+              Cargar Archivo (CSV, XLS, XLSX)
             </label>
             <div className="space-y-4">
               {/* File Input */}
               <div className="flex items-center space-x-4">
                 <input
                   type="file"
-                  id="csv_file"
-                  accept=".csv"
+                  id="file_upload"
+                  accept=".csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
                   onChange={handleFileChange}
                   className="hidden"
                   disabled={isSubmitting || isVectorizing}
                 />
                 <label
-                  htmlFor="csv_file"
+                  htmlFor="file_upload"
                   className={`cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-colors ${
                     isSubmitting || isVectorizing ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
@@ -548,7 +551,7 @@ const MyMindOpPage: React.FC = () => {
                   <svg className="w-5 h-5 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                     <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
                   </svg>
-                  Seleccionar Archivo CSV
+                  Seleccionar Archivo
                 </label>
                 
                 {selectedFile && (
@@ -577,19 +580,18 @@ const MyMindOpPage: React.FC = () => {
                       Vectorizando...
                     </>
                   ) : (
-                    <>
-                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <>                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path>
                       </svg>
-                      {!mindop ? 'Guarda la configuración primero' : 'Cargar y Vectorizar CSV'}
+                      {!mindop ? 'Guarda la configuración primero' : 'Cargar y Vectorizar Archivo'}
                     </>
                   )}
                 </button>
               )}
 
               {/* Error Messages */}
-              {errors.csvFile && (
-                <p className="text-sm text-red-600">{errors.csvFile}</p>
+              {errors.fileUpload && (
+                <p className="text-sm text-red-600">{errors.fileUpload}</p>
               )}
 
               {/* Vectorize Status Messages */}
@@ -607,21 +609,21 @@ const MyMindOpPage: React.FC = () => {
                 <br />
                 1. Primero guarda la configuración del MindOp (nombre y descripción)
                 <br />
-                2. Luego selecciona y carga archivos CSV para vectorizar tus datos
+                2. Luego selecciona y carga archivos CSV, XLS o XLSX para vectorizar tus datos
                 <br />
                 <br />
-                <strong>Formato CSV recomendado:</strong>
+                <strong>Formatos soportados:</strong>
                 <br />
-                • Separado por comas (,)
+                • CSV: Separado por comas, evita comillas dobles mal formateadas
                 <br />
-                • Evita comillas dobles (") dentro del contenido o úsalas correctamente
+                • Excel: Archivos .xls y .xlsx con múltiples hojas
                 <br />
-                • Codificación UTF-8
+                • Codificación UTF-8 recomendada
                 <br />
                 • Máximo 1000 filas por archivo para mejor rendimiento
                 <br />
                 <br />
-                Puedes hacer ambos pasos en una sola acción usando "Guardar y Procesar CSV" o por separado.
+                Puedes hacer ambos pasos en una sola acción usando "Guardar y Procesar Archivo" o por separado.
               </p>
             </div>
           </div>
@@ -648,10 +650,10 @@ const MyMindOpPage: React.FC = () => {
             >              {isSubmitting ? (
                 <span className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {selectedFile ? 'Guardando y procesando CSV...' : 'Guardando...'}
+                  {selectedFile ? 'Guardando y procesando archivo...' : 'Guardando...'}
                 </span>
               ) : (
-                selectedFile ? 'Guardar y Procesar CSV' : 'Guardar Cambios'
+                selectedFile ? 'Guardar y Procesar Archivo' : 'Guardar Cambios'
               )}
             </button>
           </div>        </form>
@@ -659,18 +661,16 @@ const MyMindOpPage: React.FC = () => {
 
       {/* CSV Files Management Section */}
       {mindop && (
-        <div className="mt-8 bg-white rounded-lg shadow-md p-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="mt-8 bg-white rounded-lg shadow-md p-8">          <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Archivos CSV Cargados
+                Archivos Cargados
               </h2>
               <p className="text-sm text-gray-600">
-                Gestiona los archivos CSV que has subido a tu MindOp
+                Gestiona los archivos CSV, XLS y XLSX que has subido a tu MindOp
               </p>
-            </div>
-            <button
-              onClick={loadCsvFiles}
+            </div>            <button
+              onClick={loadDocumentFiles}
               disabled={isLoadingFiles}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-colors disabled:opacity-50"
             >
@@ -695,23 +695,22 @@ const MyMindOpPage: React.FC = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
               <span className="ml-3 text-gray-600">Cargando archivos...</span>
             </div>
-          ) : csvFiles.length === 0 ? (
+          ) : documentFiles.length === 0 ? (
             <div className="text-center py-8">
               <div className="mb-4">
                 <svg className="w-12 h-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No hay archivos CSV cargados
+              </div>              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No hay archivos cargados
               </h3>
               <p className="text-gray-500 mb-4">
-                Usa el formulario de arriba para cargar tu primer archivo CSV
+                Usa el formulario de arriba para cargar tu primer archivo CSV, XLS o XLSX
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {csvFiles.map((file) => (
+              {documentFiles.map((file) => (
                 <div key={file.source_csv_name} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
@@ -817,10 +816,9 @@ const MyMindOpPage: React.FC = () => {
           <div className="ml-3">
             <h3 className="text-sm font-medium text-blue-800 mb-1">
               ¿Qué es un MindOp?
-            </h3>
-            <p className="text-sm text-blue-700">
+            </h3>            <p className="text-sm text-blue-700">
               Un MindOp es tu espacio de trabajo personalizado donde defines y ejecutas 
-              operaciones mentales estructuradas. Carga archivos CSV para convertir tus datos 
+              operaciones mentales estructuradas. Carga archivos CSV, XLS o XLSX para convertir tus datos 
               en embeddings vectoriales y realizar búsquedas semánticas avanzadas.
             </p>
           </div>

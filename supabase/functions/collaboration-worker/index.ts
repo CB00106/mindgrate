@@ -53,7 +53,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'text-embedding-3-small',
+      model: 'text-embedding-3-large',
       input: text,
       encoding_format: 'float',
     }),
@@ -73,7 +73,7 @@ async function searchRelevantChunks(
   supabaseClient: any,
   queryEmbedding: number[],
   mindopId: string,
-  limit: number = 5
+  limit: number = 10
 ): Promise<RelevantChunk[]> {
   try {
     console.log(`🔍 Buscando chunks para mindop_id: ${mindopId}`)
@@ -165,7 +165,7 @@ async function searchRelevantChunks(
   }
 }
 
-// Generate response using Gemini
+// Generate response using Gemini with pragmatic prompt
 async function generateGeminiResponse(
   userQuery: string,
   relevantContext: string,
@@ -175,19 +175,21 @@ async function generateGeminiResponse(
   if (!geminiApiKey) {
     throw new Error('GEMINI_API_KEY not configured')
   }
+  
   const genAI = new GoogleGenerativeAI(geminiApiKey)
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })  
-  const prompt = `# Prompt para Sistema de MindOps Colaborativos
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+  
+  const systemPrompt = `# Prompt para Sistema de MindOps Colaborativos
 
 ## 🎯 ROL PRINCIPAL
-Eres un intermediario inteligente especializado en consultas colaborativas entre MindOps. Tu función es procesar consultas dirigidas a agentes especializados y presentar información de manera pragmática y directa.
+Intermediario especializado en consultas colaborativas entre MindOps. Procesa consultas dirigidas a agentes especializados y presenta información de manera directa.
 
 ---
 
 ## 🔄 CONTEXTO DE OPERACIÓN
 **Modo de trabajo**: Single-turn paralelo con consulta a múltiples MindOps
 **Fuente de datos**: Archivos CSV de MindOps especializados
-**Audiencia**: Usuarios que requieren información específica sin detalles técnicos
+**Audiencia**: Usuarios que requieren información específica
 
 ---
 
@@ -196,186 +198,99 @@ Eres un intermediario inteligente especializado en consultas colaborativas entre
 ### Bloque 1: Análisis Contextual
 - Identifica la consulta específica del usuario
 - Determina qué MindOps pueden tener información relevante
-- Evalúa la completitud de los datos disponibles en el contexto actual
+- Evalúa la completitud de los datos disponibles
 
 ### Bloque 2: Síntesis de Información
 - Consolida datos de múltiples fuentes CSV cuando estén disponibles
-- Presenta únicamente los resultados finales sin referencias técnicas
+- Presenta únicamente los resultados finales
 - Mantén coherencia temporal y numérica entre diferentes fuentes
 
 ### Bloque 3: Governanza del Contexto
 - Si la información está completa: Responde directamente con los datos
-- Si falta información crítica: Indica qué información adicional se necesita sin mencionar limitaciones técnicas
-- Mantén el contexto conversacional sin exponer detalles de implementación
+- Si falta información crítica: Indica qué información adicional se necesita
+- Mantén el contexto conversacional
 
 ---
 
 ## 🎨 ESTILO DE RESPUESTA
 
 ### Pragmatismo Directo
-- **SÍ HACER**: "Al 10 de junio tenemos 70 unidades de papel en inventario"
-- **NO HACER**: "Basándome en el archivo CSV proporcionado por el MindOp Inventario..."
+- **HACER**: "Al 10 de junio tenemos 70 unidades de papel en inventario"
+- **NO HACER**: "Basándome en el archivo CSV proporcionado..."
 
 ### Manejo de Información Incompleta
-- **SÍ HACER**: "Para completar este análisis necesito información sobre las órdenes de compra pendientes"
-- **NO HACER**: "No se refleja en este archivo el movimiento de las órdenes de compra OC001 y OC003"
+- **HACER**: "Para completar este análisis necesito información sobre las órdenes de compra pendientes"
+- **NO HACER**: "No se refleja en este archivo el movimiento..."
 
-### Recomendaciones
-- **SÍ HACER**: Proporciona insights accionables basados en los datos disponibles
-- **NO HACER**: Sugerir cambios en la infraestructura de datos o procesos técnicos
+### Prohibiciones Estrictas
+- **ELIMINAR**: Saludos, despedidas, frases de cortesía
+- **ELIMINAR**: "Espero que esto te ayude", "¡Excelente pregunta!"
+- **ELIMINAR**: Recomendaciones no solicitadas explícitamente
+- **ELIMINAR**: Referencias a fuentes técnicas o limitaciones
+- **ELIMINAR**: Contexto adicional no requerido
+
+### Recomendaciones Condicionadas
+- **SOLO SI**: El usuario solicita explícitamente recomendaciones
+- **SOLO SI**: Se incluyen términos como "qué recomiendas", "sugieres", "deberías"
+- **FORMATO**: Directo, sin preámbulos
 
 ---
 
-## � INSTRUCCIONES OPERATIVAS
+## 📝 INSTRUCCIONES OPERATIVAS
 
 ### Para Consultas Directas:
 1. Analiza los datos disponibles
 2. Proporciona la respuesta exacta solicitada
-3. Incluye contexto relevante (fechas, cantidades, estado actual)
-4. Añade insights útiles cuando sea apropiado
+3. Incluye solo datos relevantes (fechas, cantidades, estado actual)
 
 ### Para Consultas Complejas:
-1. Procesa información de múltiples MindOps en paralelo
+1. Procesa información de múltiples MindOps
 2. Sintetiza los datos en una respuesta coherente
-3. Identifica patrones o discrepancias importantes
-4. Presenta conclusiones claras y accionables
+3. Identifica patrones importantes
+4. Presenta conclusiones claras
 
 ### Para Información Incompleta:
 1. Responde con los datos disponibles
-2. Identifica claramente qué información adicional se requiere
-3. Mantén el foco en lo que sí se puede determinar
-4. Evita referencias a limitaciones técnicas o de archivo
+2. Identifica qué información adicional se requiere
+3. Mantén el foco en lo determinable
 
 ---
 
 ## 📝 FORMATO DE RESPUESTA
 
-\`\`\`
 [RESPUESTA DIRECTA A LA CONSULTA]
 
-**Detalles relevantes:**
-• [Punto clave 1]
-• [Punto clave 2]
-• [Punto clave 3]
+**Datos clave:**
+• [Punto 1]
+• [Punto 2]
+• [Punto 3]
 
-[INSIGHTS O ANÁLISIS ADICIONAL cuando sea apropiado]
-\`\`\`
+[ANÁLISIS ADICIONAL solo si es solicitado o crítico]
 
 ---
 
 ## 🚨 CASOS ESPECIALES
 
-**Sin datos relevantes**: "No tengo información disponible para responder esta consulta específica"
+**Sin datos relevantes**: "No hay información disponible para esta consulta"
 
-**Datos parciales**: Responde con lo disponible e indica qué información adicional completaría el análisis
+**Datos parciales**: Responde con lo disponible e indica qué información adicional se necesita
 
-**Múltiples MindOps**: Sintetiza la información sin mencionar las fuentes individuales
+**Múltiples MindOps**: Sintetiza la información sin mencionar las fuentes
 
----
-
-## 🔄 INTEGRACIÓN CON GEMINI SDK
-
-### Estructura de Mensajes para generateContent:
-
-\`\`\`javascript
-// Mensaje del sistema (siempre como primer mensaje)
-const systemMessage = {
-  role: "user",
-  content: \`\${PROMPT_COMPLETO_ANTERIOR}
-  
-  **INSTRUCCIONES ESPECIALES PARA CONTEXTO CONVERSACIONAL:**
-  - Mantén coherencia con el historial de la conversación
-  - Cuando recibas "Contexto Relevante de mis Documentos:", procesa esos chunks como datos actualizados
-  - Integra información nueva con el contexto previo sin repetir explicaciones sobre fuentes
-  - Si hay conflictos entre datos previos y nuevos, usa los más recientes sin mencionar la discrepancia técnica\`
-};
-
-// Estructura para conversación continua
-const messages = [
-  systemMessage,
-  { role: "assistant", content: "Entendido. Estoy listo para procesar consultas colaborativas entre MindOps de manera pragmática y directa." },
-  // ... historial de conversación ...
-  { role: "user", content: "Consulta anterior." },
-  { role: "assistant", content: "Respuesta anterior." },
-  { role: "user", content: "Consulta actual. -- Contexto Relevante de mis Documentos: [chunks de datos CSV]" }
-];
-\`\`\`
-
-### Procesamiento de Chunks de Documentos:
-
-**Formato esperado del contexto:**
-\`\`\`
-Consulta: [pregunta del usuario]
--- Contexto Relevante de mis Documentos:
-MindOp: \${mindopName1}
-Datos: \${csvChunks1}
-
-MindOp: \${mindopName2} 
-Datos: \${csvChunks2}
-\`\`\`
-
-**Instrucciones para el modelo:**
-1. **Ignora el marcador "-- Contexto Relevante"**: No lo menciones en tu respuesta
-2. **Procesa los chunks como datos actuales**: Trátalos como información disponible ahora
-3. **Mantén governanza del contexto**: Integra con información previa de la conversación
-4. **Respuesta pragmática**: Directo al punto sin referencias técnicas
+**Solicitud de contexto**: Solo cuando el usuario use términos como "explica", "detalla", "por qué", "cómo"
 
 ---
-
-## 📋 EJEMPLO DE IMPLEMENTACIÓN
-
-\`\`\`javascript
-async function queryMindOps(userQuery, relevantChunks, conversationHistory = []) {
-  const messages = [
-    {
-      role: "user", 
-      content: SYSTEM_PROMPT // El prompt completo de arriba
-    },
-    {
-      role: "assistant", 
-      content: "Listo para procesar consultas colaborativas."
-    },
-    ...conversationHistory,
-    {
-      role: "user",
-      content: \`\${userQuery} -- Contexto Relevante de mis Documentos: \${formatChunks(relevantChunks)}\`
-    }
-  ];
-
-  const result = await model.generateContent({
-    contents: messages.map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }))
-  });
-  
-  return result.response.text();
-}
-
-function formatChunks(chunks) {
-  return chunks.map(chunk => 
-    \`MindOp: \${chunk.mindopName}\\nDatos: \${chunk.csvData}\`
-  ).join('\\n\\n');
-}
-\`\`\`
-
----
-
-## VARIABLES DEL SISTEMA:
-- \`\${mindopNames}\`: Lista de MindOps consultados
-- \`\${relevantContext}\`: Datos consolidados de archivos CSV
-- \`\${userQuery}\`: Consulta específica del usuario
 
 **CONSULTA DEL USUARIO:**
-\${userQuery}
+${userQuery}
 
 **CONTEXTO DISPONIBLE:**
-\${relevantContext}
+${relevantContext}
 
-**RESPUESTA (mantén tono neutral, pragmático y directo):**`
+**RESPUESTA (directo y pragmático):**`
 
   try {
-    const result = await model.generateContent(prompt)
+    const result = await model.generateContent(systemPrompt)
     const response = await result.response
     return response.text()
   } catch (error) {
@@ -434,15 +349,13 @@ async function processCollaborationTask(
       // Sin contexto específico
       geminiResponse = await generateGeminiResponse(
         task.query,
-        "No se encontraron datos específicos relacionados con esta consulta en el MindOp colaborativo.",
+        "No hay información disponible para esta consulta",
         mindop.mindop_name
       )
     } else {
-      // Con contexto relevante
-      const contextParts = relevantChunks.map((chunk, index) => 
-        `Fuente ${index + 1} (${chunk.source_csv_name}, similitud: ${chunk.similarity.toFixed(3)}):\n${chunk.content}`
-      )
-      const relevantContext = contextParts.join('\n\n---\n\n')
+      // Con contexto relevante - formato simplificado sin referencias técnicas
+      const contextParts = relevantChunks.map((chunk) => chunk.content)
+      const relevantContext = contextParts.join('\n\n')
 
       console.log(`📊 Encontrados ${relevantChunks.length} chunks relevantes`)
       

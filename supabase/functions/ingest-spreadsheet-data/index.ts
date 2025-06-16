@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
-import { parse as csvParse } from 'https://deno.land/std@0.168.0/encoding/csv.ts'
+import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
 
 interface ChunkData {
   mindop_id: string
@@ -9,6 +9,7 @@ interface ChunkData {
   content: string
   embedding: number[]
   source_csv_name: string
+  metadata?: any
 }
 
 interface OpenAIEmbeddingResponse {
@@ -17,45 +18,45 @@ interface OpenAIEmbeddingResponse {
   }[]
 }
 
-// Simple tokenizer for text-embedding-3-small (approximate GPT-4 tokenization)
+// Simple tokenizer estimation (more reliable than external dependencies)
 function estimateTokens(text: string): number {
-  // Rough estimation: 1 token ≈ 4 characters for English text
-  // This is a simplification but works for chunking purposes
+  // GPT-3/4 tokenization approximation: ~1 token per 4 characters for English
   return Math.ceil(text.length / 4)
 }
 
 // Split text into chunks with overlap
 function createChunks(text: string, maxTokens = 450, overlapTokens = 50): string[] {
-  const words = text.split(/\s+/)
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0)
   const chunks: string[] = []
   let currentChunk: string[] = []
   let currentTokens = 0
   
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i]
-    const wordTokens = estimateTokens(word)
+  for (let i = 0; i < sentences.length; i++) {
+    const sentence = sentences[i].trim()
+    if (!sentence) continue
     
-    if (currentTokens + wordTokens > maxTokens && currentChunk.length > 0) {
+    const sentenceTokens = estimateTokens(sentence)
+    
+    if (currentTokens + sentenceTokens > maxTokens && currentChunk.length > 0) {
       // Finalize current chunk
-      chunks.push(currentChunk.join(' '))
+      chunks.push(currentChunk.join('. ') + '.')
       
       // Start new chunk with overlap
-      const overlapWords = Math.floor(overlapTokens / 4) // Approximate words for overlap
-      const startOverlap = Math.max(0, currentChunk.length - overlapWords)
-      currentChunk = currentChunk.slice(startOverlap)
-      currentTokens = estimateTokens(currentChunk.join(' '))
+      const overlapSentences = Math.min(2, currentChunk.length) // Keep last 2 sentences for overlap
+      currentChunk = currentChunk.slice(-overlapSentences)
+      currentTokens = estimateTokens(currentChunk.join('. '))
     }
     
-    currentChunk.push(word)
-    currentTokens += wordTokens
+    currentChunk.push(sentence)
+    currentTokens += sentenceTokens
   }
   
   // Add the last chunk if it has content
   if (currentChunk.length > 0) {
-    chunks.push(currentChunk.join(' '))
+    chunks.push(currentChunk.join('. ') + '.')
   }
   
-  return chunks.filter(chunk => chunk.trim().length > 0)
+  return chunks.filter(chunk => chunk.trim().length > 10) // Minimum chunk size
 }
 
 // Generate embedding using OpenAI API
@@ -88,7 +89,6 @@ async function generateEmbedding(text: string): Promise<number[]> {
 }
 
 // Sanitize text content to handle Unicode and special characters
-// Sanitize text content to avoid Unicode and database issues
 function sanitizeText(text: string): string {
   if (!text || typeof text !== 'string') {
     return ''
@@ -111,75 +111,71 @@ function sanitizeText(text: string): string {
     .trim()
 }
 
-// Parse CSV content with better error handling
-function parseCSVContent(csvContent: string): string[] {
+// Process Excel file using XLSX library
+async function processExcelFile(file: File): Promise<{ content: string, metadata: any }[]> {
   try {
-    // Clean the CSV content first
-    const cleanedContent = csvContent
-      .replace(/\r\n/g, '\n')  // Normalize line endings
-      .replace(/\r/g, '\n')    // Handle old Mac line endings
-      .trim()
-
-    // Try different parsing strategies
-    let parsed;
+    console.log('📊 Procesando archivo Excel...')
     
-    try {
-      // First try: standard parsing
-      parsed = csvParse(cleanedContent, { 
-        skipFirstRow: false,
-        separator: ','
-      })
-    } catch (firstError) {
-      console.log('Standard CSV parsing failed, trying alternative methods...')
+    // Read file as array buffer
+    const arrayBuffer = await file.arrayBuffer()
+    
+    // Parse Excel file
+    const workbook = XLSX.read(arrayBuffer, {
+      type: 'array',
+      cellDates: true,
+      cellNF: false,
+      cellText: false
+    })
+    
+    const documents: { content: string, metadata: any }[] = []
+    
+    // Process each worksheet
+    for (const sheetName of workbook.SheetNames) {
+      console.log(`📄 Procesando hoja: ${sheetName}`)
       
-      try {
-        // Second try: more lenient parsing
-        parsed = csvParse(cleanedContent, { 
-          skipFirstRow: false,
-          separator: ','
-        })
-      } catch (secondError) {
-        // Third try: simple line-by-line parsing for malformed CSVs
-        console.log('Advanced CSV parsing failed, using simple line parsing...')
-        const lines = cleanedContent.split('\n').filter(line => line.trim())
-        return lines.map(line => {
-          // Simple comma splitting with basic quote handling
-          const sanitized = sanitizeText(line.replace(/"/g, ''))
-          return sanitized.split(',').join(' | ').trim()
-        }).filter(line => line.length > 0)
-      }
+      const worksheet = workbook.Sheets[sheetName]
+      
+      // Convert to JSON format (array of objects)
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1, // Use array format
+        defval: '', // Default value for empty cells
+        blankrows: false // Skip blank rows
+      })
+      
+      // Process each row
+      jsonData.forEach((row: any[], rowIndex: number) => {
+        if (Array.isArray(row) && row.length > 0) {
+          // Convert row to text
+          const rowText = row
+            .map(cell => String(cell || '').trim())
+            .filter(cell => cell.length > 0)
+            .join(' | ')
+          
+          if (rowText.length > 0) {
+            documents.push({
+              content: sanitizeText(rowText),
+              metadata: {
+                sheetName: sheetName,
+                rowIndex: rowIndex,
+                source: 'excel_sheet'
+              }
+            })
+          }
+        }
+      })
     }
     
-    const rows: string[] = []
+    console.log(`✅ Procesados ${documents.length} documentos desde Excel`)
     
-    for (const row of parsed) {
-      // Convert each row to a string representation
-      if (Array.isArray(row)) {
-        const rowText = row.map(cell => sanitizeText(String(cell))).join(' | ')
-        if (rowText.trim()) {
-          rows.push(rowText.trim())
-        }
-      } else {
-        // Handle object format (with headers)
-        const values = Object.values(row).map(cell => sanitizeText(String(cell))).join(' | ')
-        if (values.trim()) {
-          rows.push(values.trim())
-        }
-      }
+    if (documents.length === 0) {
+      throw new Error('El archivo Excel no contiene datos válidos para procesar')
     }
     
-    return rows
+    return documents
+    
   } catch (error) {
-    // Provide more helpful error messages
-    const errorMessage = error.message || 'Unknown parsing error'
-    
-    if (errorMessage.includes('bare " in non-quoted-field')) {
-      throw new Error(`CSV contiene comillas mal formateadas. Por favor revisa que todas las comillas estén correctamente cerradas en tu archivo CSV. Error técnico: ${errorMessage}`)
-    } else if (errorMessage.includes('parse error')) {
-      throw new Error(`El archivo CSV tiene un formato inválido. Por favor verifica que esté correctamente formateado (separado por comas, con comillas correctas). Error técnico: ${errorMessage}`)
-    } else {
-      throw new Error(`Error al procesar el archivo CSV: ${errorMessage}`)
-    }
+    console.error('❌ Error procesando archivo Excel:', error)
+    throw new Error(`Error procesando archivo Excel: ${error.message}`)
   }
 }
 
@@ -312,10 +308,20 @@ serve(async (req) => {
       )
     }
 
-    // Validate file type
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    // Validate file type for Excel files
+    const fileName = file.name.toLowerCase();
+    const isValidExcelFile = fileName.endsWith('.xlsx') || 
+                            fileName.endsWith('.xls') || 
+                            file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                            file.type === 'application/vnd.ms-excel';
+    
+    if (!isValidExcelFile) {
       return new Response(
-        JSON.stringify({ error: 'File must be a CSV file' }),
+        JSON.stringify({ 
+          error: 'File must be an Excel file (.xlsx or .xls)',
+          received_type: file.type,
+          received_name: file.name
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -323,47 +329,47 @@ serve(async (req) => {
       )
     }
 
-    // Read and parse CSV content
-    const csvContent = await file.text()
-    const csvRows = parseCSVContent(csvContent)
-    
-    if (csvRows.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'CSV file is empty or invalid' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )    }
+    console.log(`📁 Procesando archivo: ${file.name} (${file.type}, ${file.size} bytes)`);
 
-    // Combine rows into text for chunking
-    const fullText = csvRows.join('\n')
+    // Process Excel file
+    const documents = await processExcelFile(file);
+    
+    // Combine all document content for chunking
+    const fullText = documents.map(doc => doc.content).join('\n\n')
     
     // Create chunks
     const textChunks = createChunks(fullText)
     
     if (textChunks.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'No valid text chunks could be created from CSV' }),
+        JSON.stringify({ 
+          error: 'No valid content chunks could be created from the Excel file' 
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       )
-    }    // Generate embeddings and prepare data for insertion
+    }
+
+    // Generate embeddings and prepare data for insertion
     const chunksToInsert: ChunkData[] = []
+    
+    console.log(`🔄 Generando embeddings para ${textChunks.length} chunks...`);
     
     for (let i = 0; i < textChunks.length; i++) {
       const chunk = textChunks[i]
-      // Sanitize chunk content before processing
-      const sanitizedChunk = sanitizeText(chunk)
       
-      if (sanitizedChunk.length === 0) {
+      // Sanitize chunk content before processing
+      const sanitizedContent = sanitizeText(chunk)
+      
+      if (sanitizedContent.length === 0) {
         console.log(`Skipping empty chunk ${i + 1} after sanitization`)
         continue
       }
-        try {
-        const embedding = await generateEmbedding(sanitizedChunk)
+
+      try {
+        const embedding = await generateEmbedding(sanitizedContent)
         
         // Validate embedding array
         if (!Array.isArray(embedding) || embedding.length === 0) {
@@ -382,25 +388,38 @@ serve(async (req) => {
         chunksToInsert.push({
           mindop_id: mindopId,
           user_id: user.id,
-          content: sanitizedChunk,
+          content: sanitizedContent,
           embedding: validEmbedding,
-          source_csv_name: sanitizeText(file.name)
+          source_csv_name: sanitizeText(file.name),
+          metadata: {
+            chunk_index: i,
+            source_type: 'excel',
+            total_chunks: textChunks.length,
+            original_documents: documents.length
+          }
         })
         
         // Add a small delay to avoid rate limiting
         if (i < textChunks.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 100))
         }
+        
+        // Log progress every 10 chunks
+        if ((i + 1) % 10 === 0) {
+          console.log(`✅ Procesados ${i + 1}/${textChunks.length} chunks`);
+        }
+        
       } catch (error) {
         console.error(`Failed to generate embedding for chunk ${i + 1}:`, error)
         throw new Error(`Failed to generate embedding for chunk ${i + 1}: ${error.message}`)
-      }    }
+      }
+    }
 
     // Check if we have any chunks to insert after sanitization
     if (chunksToInsert.length === 0) {
       return new Response(
         JSON.stringify({ 
-          error: 'No valid content chunks could be created after processing. The CSV may contain only invalid characters or empty data.' 
+          error: 'No valid content chunks could be created after processing' 
         }),
         {
           status: 400,
@@ -409,16 +428,29 @@ serve(async (req) => {
       )
     }
 
+    console.log(`💾 Insertando ${chunksToInsert.length} chunks en la base de datos...`);
+
     // Insert all chunks into database
-    await insertChunks(supabaseClient, chunksToInsert)// Return success response
+    await insertChunks(supabaseClient, chunksToInsert)
+
+    console.log('✅ Proceso completado exitosamente');
+
+    // Return success response
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'CSV file processed successfully',
+        message: 'Excel file processed successfully',
         file_name: file.name,
         chunks_created: chunksToInsert.length,
-        total_rows_processed: csvRows.length,
+        total_documents_processed: documents.length,
         mindop_id: mindopId,
+        processing_details: {
+          original_documents: documents.length,
+          chunks_created: chunksToInsert.length,
+          average_chunk_size_tokens: chunksToInsert.length > 0 
+            ? Math.round(chunksToInsert.reduce((sum, chunk) => sum + estimateTokens(chunk.content), 0) / chunksToInsert.length)
+            : 0
+        }
       }),
       {
         status: 200,
@@ -427,11 +459,11 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error processing CSV:', error)
+    console.error('❌ Error processing Excel file:', error)
     
     return new Response(
       JSON.stringify({
-        error: 'Failed to process CSV file',
+        error: 'Failed to process Excel file',
         details: error.message,
       }),
       {

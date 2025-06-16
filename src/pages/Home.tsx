@@ -87,17 +87,16 @@ const WaitlistModal: React.FC<WaitlistModalProps> = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white p-6 md:p-8 rounded-lg max-w-md w-full mx-auto">
-        <h3 className="text-xl md:text-2xl font-bold mb-4">¡Únete a la Lista de Espera!</h3>        <p className="text-gray-600 mb-6">Sé el primero en conocer las nuevas funcionalidades de Mindgrate.</p>
-        <div className="flex flex-row gap-3 sm:gap-4">
+        <h3 className="text-xl md:text-2xl font-bold mb-4">¡Únete a la Lista de Espera!</h3>        <p className="text-gray-600 mb-6">Sé el primero en conocer las nuevas funcionalidades de Mindgrate.</p>        <div className="flex flex-row gap-3 sm:gap-4">
           <button 
             onClick={onClose} 
-            className="flex-1 bg-gray-200 text-gray-800 font-semibold py-3 px-4 rounded-[13px] hover:bg-gray-300 transition-all duration-300 transform hover:scale-105 flex items-center justify-center text-sm sm:text-base"
+            className="flex-1 bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-[13px] hover:bg-gray-300 transition-all duration-300 transform hover:scale-105 flex items-center justify-center text-sm sm:text-base"
           >
             Cerrar
           </button>
           <button
             onClick={() => { alert('¡Gracias! Te contactaremos pronto.'); onClose(); }}
-            className="flex-1 bg-[#2383e2] text-white font-semibold py-3 px-4 rounded-[13px] hover:bg-[#1d6ab8] transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center text-sm sm:text-base"
+            className="flex-1 bg-[#2383e2] text-white font-semibold py-2 px-4 rounded-[13px] hover:bg-[#1d6ab8] transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center text-sm sm:text-base"
           >
             Registrarme
           </button>
@@ -125,11 +124,11 @@ const Home = () => {
               Cada agente es una unidad inteligente que forma parte de una red segura, modular y adaptable. No es un chatbot. No es una suite. Es una nueva forma de operar.
             </p>            <div className="flex flex-row gap-3 sm:gap-4 mt-4">
               <button onClick={() => { document.getElementById('bloque-cerebro')?.scrollIntoView({ behavior: 'smooth' }); }}
-                className="flex-1 bg-[#2383e2] text-white font-bold py-3 px-4 sm:px-6 md:py-4 md:px-8 rounded-[13px] hover:bg-[#1d6ab8] transition-all duration-300 transform hover:scale-105 shadow-lg text-center text-sm sm:text-base flex items-center justify-center">
+                className="flex-1 bg-[#2383e2] text-white font-bold py-2 px-4 sm:px-6 md:py-2.5 md:px-8 rounded-[13px] hover:bg-[#1d6ab8] transition-all duration-300 transform hover:scale-105 shadow-lg text-center text-sm sm:text-base flex items-center justify-center">
                 Conoce Más
               </button>
               <a href="https://form.typeform.com/to/bZkqm16V" target="_blank" rel="noopener noreferrer"
-                className="flex-1 bg-[#ebf5fe] text-[#2383e2] font-bold py-3 px-4 sm:px-6 md:py-4 md:px-8 rounded-[13px] border-2 border-[#2383e2] hover:bg-[#d6ebfd] transition-all duration-300 transform hover:scale-105 text-center text-sm sm:text-base flex items-center justify-center">
+                className="flex-1 bg-[#ebf5fe] text-[#2383e2] font-bold py-2 px-4 sm:px-6 md:py-2.5 md:px-8 rounded-[13px] border-2 border-[#2383e2] hover:bg-[#d6ebfd] transition-all duration-300 transform hover:scale-105 text-center text-sm sm:text-base flex items-center justify-center">
                 Feedback
               </a>
             </div>
@@ -169,7 +168,7 @@ const Home = () => {
             <FlipCard title="En esta fase inicial"
               subtitle={
                 <ul className="text-left space-y-2 text-sm md:text-base">
-                  <li><strong className="text-[#2383e2]">Carga tus Datos:</strong> Sube un archivo CSV con la información que consideres relevante.</li>
+                  <li><strong className="text-[#2383e2]">Carga tus Datos:</strong> Sube un archivo CSV, xls o xlsx con la información que consideres relevante.</li>
                   <li><strong className="text-[#2383e2]">Activa tu Agente:</strong> Tu agente personal asimilará esta información al instante.</li>
                   <li><strong className="text-[#2383e2]">Ponlo a Prueba:</strong> Realiza consultas y observa cómo tu agente te entrega respuestas.</li>
                 </ul>
@@ -177,7 +176,7 @@ const Home = () => {
               frontImage={ejmpeloimage} frontImageAlt="Ejemplo de Carga de CSV"
               backContent={
                 <div className="p-2">
-                  <h3 className="text-xl md:text-2xl font-bold mb-4">¿Por qué empezar con CSV?</h3>
+                  <h3 className="text-xl md:text-2xl font-bold mb-4">¿Por qué empezar con esta clase de archivos?</h3>
                   <p className="text-base md:text-lg">Nos permite probar y perfeccionar la parte más crítica de nuestra tecnología: la capacidad de un agente para procesar, entender y utilizar datos de forma segura.</p>
                 </div>
               }
@@ -226,8 +225,8 @@ const Home = () => {
             <p className="text-lg md:text-xl text-gray-700">
               El viaje de Mindgrate apenas comienza y tu perspectiva es nuestra brújula.
             </p>            <div className="flex flex-row gap-3 sm:gap-4 mt-4 self-center lg:self-start">
-              <a href="/login" className="flex-1 bg-[#2383e2] text-white font-bold py-3 px-4 sm:px-6 md:py-4 md:px-8 rounded-[13px] hover:bg-[#1d6ab8] transition-colors shadow-lg text-center text-sm sm:text-base flex items-center justify-center">Registrate Ahora</a>
-              <a href="URL_SUPABASE_BUCKET/brochure.pdf" download className="flex-1 bg-[#ebf5fe] text-[#2383e2] font-bold py-3 px-4 sm:px-6 md:py-4 md:px-8 rounded-[13px] border-2 border-[#2383e2] hover:bg-[#d6ebfd] transition-colors text-center text-sm sm:text-base flex items-center justify-center">Descargar Brochure</a>
+              <a href="/login" className="flex-1 bg-[#2383e2] text-white font-bold py-2 px-4 sm:px-6 md:py-2.5 md:px-8 rounded-[13px] hover:bg-[#1d6ab8] transition-colors shadow-lg text-center text-sm sm:text-base flex items-center justify-center">Registrate Ahora</a>
+              <a href="URL_SUPABASE_BUCKET/brochure.pdf" download className="flex-1 bg-[#ebf5fe] text-[#2383e2] font-bold py-2 px-4 sm:px-6 md:py-2.5 md:px-8 rounded-[13px] border-2 border-[#2383e2] hover:bg-[#d6ebfd] transition-colors text-center text-sm sm:text-base flex items-center justify-center">Descargar Brochure</a>
             </div>
           </div>
           <div className="flex flex-col gap-6 p-6 bg-gray-50 rounded-lg">
@@ -248,12 +247,11 @@ const Home = () => {
             <h2 className="text-4xl md:text-5xl font-bold leading-tight">
               ¿Quieres ser el primero en probar lo nuevo?
             </h2>
-          </div>
-          <div className="flex flex-col items-center lg:items-start gap-6 text-center lg:text-left">
+          </div>          <div className="flex flex-col items-center lg:items-start gap-6 text-center lg:text-left">
             <p className="text-lg md:text-2xl text-gray-300">
               Únete a nuestra lista de espera y tendrás un canal directo con nuestro equipo para influir en el futuro de la IA colaborativa.
             </p>
-            <button onClick={() => setIsModalOpen(true)} className="bg-[#2383e2] text-white font-bold py-4 px-10 rounded-[13px] hover:bg-[#1d6ab8] transition-colors transform hover:scale-105 shadow-lg">
+            <button onClick={() => setIsModalOpen(true)} className="bg-[#2383e2] text-white font-bold py-2.5 px-10 rounded-[13px] hover:bg-[#1d6ab8] transition-colors transform hover:scale-105 shadow-lg">
               ÚNETE A LA LISTA DE ESPERA
             </button>
           </div>
