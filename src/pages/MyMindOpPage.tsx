@@ -807,7 +807,86 @@ const MyMindOpPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}{/* Info Card */}
+      )}{/* Mejores Prácticas */}
+      <div className="mt-8 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <span className="text-green-600 text-xl">🎯</span>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-lg font-semibold text-green-800 mb-4">
+              Mejores Prácticas
+            </h3>
+            <div className="text-sm text-green-700 space-y-4">
+              <div>
+                <h4 className="font-semibold text-green-800 mb-2">
+                  Mejores Prácticas para Usuarios de MindOps MVP
+                </h4>
+                <p className="mb-3">
+                  Para maximizar la eficacia y precisión de tu MindOp, te recomendamos seguir estas mejores prácticas en la preparación de tus datos, en tu interacción y en la colaboración.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-green-800 mb-2">
+                  1. Preparación de tus Fuentes de Datos (Archivos Excel)
+                </h4>
+                <p className="mb-2">
+                  La calidad de las respuestas de tu MindOp depende directamente de la calidad de los datos que le proporcionas. Piensa en tus archivos Excel como el cerebro de tu agente; mientras mejor organizados estén, más inteligente será.
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-4">
+                  <li><strong>Usa Encabezados Claros y Descriptivos:</strong> Nombra tus columnas de manera que sean fácilmente entendibles por un humano. Evita abreviaturas ambiguas. En lugar de "Vta_Net", usa "Venta Neta en USD".</li>
+                  <li><strong>Estructura tus Datos Lógicamente:</strong> Si tu libro de Excel tiene datos sobre diferentes temas, sepáralos en hojas distintas (ej. "Ventas 2024", "Inventario Actual", "Contactos de Proveedores"). Nuestro sistema puede entender y utilizar los nombres de las hojas como contexto.</li>
+                  <li><strong>Limpia tus Datos:</strong> Elimina filas o columnas completamente vacías. Corrige errores de tipeo o inconsistencias obvias antes de subir el archivo. Los datos "sucios" generan "ruido" y pueden confundir al agente.</li>
+                  <li><strong>Sé Explícito:</strong> No asumas que el agente entenderá el contexto implícito. Si una columna contiene IDs de productos, es útil tener otra columna al lado con la descripción textual del producto.</li>
+                  <li><strong>Nombra tus Archivos de Forma Descriptiva:</strong> En lugar de subir datos_final.xlsx, usa un nombre como reporte_ventas_Q1_2024.xlsx. Esto te ayudará a gestionar tus fuentes de datos en la página "Tu Mindop".</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-green-800 mb-2">
+                  2. Interacción con tu MindOp (El Arte de Preguntar)
+                </h4>
+                <p className="mb-2">
+                  La forma en que te comunicas con tu MindOp es clave para obtener respuestas útiles.
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-4">
+                  <li><strong>Haz Preguntas Específicas:</strong> En lugar de preguntar "¿Cómo vamos en ventas?", prueba con una pregunta más específica como "Compara las ventas totales de Enero y Febrero de 2024 según la hoja 'Ventas 2024'".</li>
+                  <li><strong>Aprovecha el Contexto de la Conversación:</strong> Recuerda que tu MindOp tiene memoria de la conversación actual. No necesitas repetir toda la información en cada pregunta. Puedes hacer preguntas de seguimiento.</li>
+                  <li><strong>Itera y Refina tu Pregunta:</strong> Si la primera respuesta no es exactamente lo que buscas, intenta reformular tu pregunta. A veces, un pequeño cambio en la forma de preguntar puede generar un resultado mucho mejor.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-green-800 mb-2">
+                  3. Colaboración Inteligente con Otros MindOps
+                </h4>
+                <p className="mb-2">
+                  La colaboración es una de las funcionalidades más potentes del MVP. Úsala estratégicamente.
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-4">
+                  <li><strong>Sigue a MindOps con Conocimiento Complementario:</strong> Utiliza el "Buscador de MindOps" para encontrar y seguir a agentes que tengan datos que complementen los tuyos, no que los dupliquen. Piensa en ello como construir un equipo de especialistas.</li>
+                  <li><strong>Sé Claro al Colaborar:</strong> Cuando uses el selector de colaboración en el chat para dirigir una pregunta a otro MindOp, recuerda que ese MindOp responderá usando sus propios datos. Asegúrate de que tu pregunta sea comprensible por sí misma para el agente colaborador.</li>
+                  <li><strong>Gestiona tus Conexiones:</strong> Revisa periódicamente tu sección de "Conexiones" en el "Espacio de Notificaciones" para gestionar quién te sigue y a quién sigues, asegurando que tu red de colaboración se mantenga relevante.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-green-800 mb-2">
+                  4. Administración y Mantenimiento de tu MindOp
+                </h4>
+                <ul className="list-disc list-inside space-y-1 ml-4">
+                  <li><strong>Define un Buen Perfil:</strong> En la página "Tu Mindop", asigna un mindop_name y mindop_description claros y concisos. Esto ayudará a otros usuarios a entender la especialidad de tu agente cuando aparezca en los resultados de búsqueda.</li>
+                  <li><strong>Mantén tus Datos Actualizados:</strong> Si un archivo Excel que subiste queda obsoleto, es una buena práctica eliminarlo usando la funcionalidad de gestión en "Tu Mindop" para evitar que el agente utilice información desactualizada.</li>
+                  <li><strong>Empieza de a Poco:</strong> Si eres un nuevo usuario, comienza subiendo un solo archivo bien estructurado para familiarizarte con cómo tu MindOp responde. Luego, puedes ir añadiendo más fuentes de datos.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Info Card */}
       <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
         <div className="flex">
           <div className="flex-shrink-0">
