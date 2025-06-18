@@ -17,6 +17,9 @@ html, body {
   width: 100%;
   height: 100%;
   overflow-x: hidden;
+  /* Forzar modo claro independientemente de las preferencias del sistema */
+  color: #000000;
+  background-color: #ffffff;
 }
 
 #root {
@@ -31,6 +34,8 @@ h1 {
   line-height: 1.1;
 }
 
+/* 
+DESACTIVADO: Modo oscuro automático del sistema
 @media (prefers-color-scheme: dark) {
   :root {
     color: #ffffff;
@@ -40,3 +45,4 @@ h1 {
     color: #747bff;
   }
 }
+*/
