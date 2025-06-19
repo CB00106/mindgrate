@@ -17,6 +17,7 @@
     "supabase:functions:logs": "supabase functions logs mindop-service"
   },
   "dependencies": {
+    "@hcaptcha/react-hcaptcha": "^1.12.0",
     "@supabase/supabase-js": "^2.49.9",
     "abort-controller": "^3.0.0",
     "clsx": "^2.0.0",
