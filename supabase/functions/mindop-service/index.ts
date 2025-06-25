@@ -954,26 +954,44 @@ async function handleAsyncTask(
 // ===== MAIN HANDLER =====
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS preflight requests - SOLUCIÓN IMPLEMENTADA
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { 
+      status: 200,  // Agregar status 200 explícito
+      headers: corsHeaders 
+    })
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      {
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    )
   }
 
   try {
     // Initialize clients
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY')!
     
     // Log environment variables status (without exposing values)
     console.log('🔧 Environment check:', {
-      supabase_configured: !!supabaseUrl && !!supabaseServiceKey,
+      supabase_configured: !!supabaseUrl && !!supabaseAnonKey,
       gemini_configured: !!geminiApiKey,
       openai_configured: !!Deno.env.get('OPENAI_API_KEY'),
       google_search_configured: !!Deno.env.get('GOOGLE_CUSTOM_SEARCH_API_KEY') && !!Deno.env.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID')
     })
+      // Initialize Supabase client with user authorization
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: { Authorization: req.headers.get('Authorization')! },
+      },
+    })
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const genAI = new GoogleGenerativeAI(geminiApiKey)
     
     // Get user from auth header
@@ -996,8 +1014,25 @@ serve(async (req) => {
       )
     }
     
-    const body = await req.json()
-    const { mode, mindop_id, query, target_mindop_id, task_id } = body
+    // Parse request body with error handling
+    let body
+    try {
+      body = await req.json()
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+      const { mode, mindop_id, query, target_mindop_id, task_id } = body
+    
+    // Validate required mode parameter
+    if (!mode) {
+      return new Response(
+        JSON.stringify({ error: 'mode parameter is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
     
     // Route to appropriate handler based on mode
     switch (mode) {
@@ -1031,8 +1066,7 @@ serve(async (req) => {
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid mode. Use: local, sync_collaboration, or async_task' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }        )
     }
   } catch (error) {
     console.error('Unhandled error in mindop-service:', error)
