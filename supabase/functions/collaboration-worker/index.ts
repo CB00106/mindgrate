@@ -7,11 +7,9 @@ interface CollaborationTask {
   id: string;
   requester_mindop_id: string;
   target_mindop_id: string;
-  query: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  priority: 'low' | 'normal' | 'high';
-  response?: string;
-  error_message?: string;
+  requester_user_query: string;
+  status: 'pending_target_processing' | 'processing_by_target' | 'target_processing_complete' | 'target_processing_failed' | 'response_received_by_requester';
+  target_mindop_response?: string;
   metadata: any;
   created_at: string;
   updated_at: string;
@@ -306,12 +304,11 @@ async function processCollaborationTask(
 ): Promise<void> {
   console.log(`🔄 Procesando tarea de colaboración: ${task.id}`)
   
-  try {
-    // Marcar tarea como en procesamiento
+  try {    // Marcar tarea como en procesamiento
     await supabaseAdmin
       .from('mindop_collaboration_tasks')
       .update({
-        status: 'processing',
+        status: 'processing_by_target',
         updated_at: new Date().toISOString()
       })
       .eq('id', task.id)
@@ -328,11 +325,9 @@ async function processCollaborationTask(
     }
 
     const mindop = mindopData as MindopRecord
-    console.log(`✅ MindOp objetivo encontrado: ${mindop.mindop_name}`)
-
-    // Generar embedding para la consulta
+    console.log(`✅ MindOp objetivo encontrado: ${mindop.mindop_name}`)    // Generar embedding para la consulta
     console.log('🔍 Generando embedding para la consulta...')
-    const queryEmbedding = await generateEmbedding(task.query)
+    const queryEmbedding = await generateEmbedding(task.requester_user_query)
 
     // Buscar chunks relevantes
     console.log('📊 Buscando chunks relevantes...')
@@ -345,10 +340,9 @@ async function processCollaborationTask(
 
     let geminiResponse: string
 
-    if (relevantChunks.length === 0) {
-      // Sin contexto específico
+    if (relevantChunks.length === 0) {      // Sin contexto específico
       geminiResponse = await generateGeminiResponse(
-        task.query,
+        task.requester_user_query,
         "No hay información disponible para esta consulta",
         mindop.mindop_name
       )
@@ -358,20 +352,17 @@ async function processCollaborationTask(
       const relevantContext = contextParts.join('\n\n')
 
       console.log(`📊 Encontrados ${relevantChunks.length} chunks relevantes`)
-      
-      geminiResponse = await generateGeminiResponse(
-        task.query,
+        geminiResponse = await generateGeminiResponse(
+        task.requester_user_query,
         relevantContext,
         mindop.mindop_name
       )
-    }
-
-    // Actualizar tarea como completada
+    }    // Actualizar tarea como completada
     const { error: updateError } = await supabaseAdmin
       .from('mindop_collaboration_tasks')
       .update({
-        status: 'completed',
-        response: geminiResponse,
+        status: 'target_processing_complete',
+        target_mindop_response: geminiResponse,
         updated_at: new Date().toISOString(),
         metadata: {
           ...task.metadata,
@@ -394,13 +385,11 @@ async function processCollaborationTask(
 
   } catch (error) {
     console.error(`❌ Error procesando tarea ${task.id}:`, error.message)
-    
-    // Marcar tarea como fallida
+      // Marcar tarea como fallida
     await supabaseAdmin
       .from('mindop_collaboration_tasks')
       .update({
-        status: 'failed',
-        error_message: error.message,
+        status: 'target_processing_failed',
         updated_at: new Date().toISOString()
       })
       .eq('id', task.id)
@@ -442,16 +431,13 @@ serve(async (req: Request) => {
       )
     }
     
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
-
-    // Obtener tareas pendientes (con prioridad)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)    // Obtener tareas pendientes (con prioridad)
     console.log('📋 Buscando tareas de colaboración pendientes...')
     const { data: pendingTasks, error: tasksError } = await supabaseAdmin
       .from('mindop_collaboration_tasks')
       .select('*')
-      .eq('status', 'pending')
-      .order('priority', { ascending: false }) // high, normal, low
-      .order('created_at', { ascending: true }) // FIFO para misma prioridad
+      .eq('status', 'pending_target_processing')
+      .order('created_at', { ascending: true }) // FIFO
       .limit(5) // Procesar máximo 5 tareas por invocación
 
     if (tasksError) {

@@ -72,9 +72,8 @@ const ChatPage: React.FC = () => {
   const { mindop: userMindOp, initialized: mindOpInitialized } = useMindOp();
   const userMindOpId = userMindOp?.id || null;
   const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [requestInProgress, setRequestInProgress] = useState<string | null>(null);
-  const [activeMode, setActiveMode] = useState<'mindop' | 'collaborate'>('mindop');
+  const [isLoading, setIsLoading] = useState(false);  const [requestInProgress, setRequestInProgress] = useState<string | null>(null);
+  const [activeMode, setActiveMode] = useState<'local' | 'sync_collaboration' | 'async_task'>('local');
   
   // Estados para colaboración dirigida
   const [connectedMindOps, setConnectedMindOps] = useState<ConnectedMindOp[]>([]);
@@ -120,28 +119,27 @@ const ChatPage: React.FC = () => {
 
   // Inicializar mensaje de bienvenida solo para nuevas conversaciones
   useEffect(() => {
-    if (!currentConversationId && conversation.length === 0) {
-      const getWelcomeMessage = () => {
+    if (!currentConversationId && conversation.length === 0) {      const getWelcomeMessage = () => {
         const firstName = user?.user_metadata?.first_name || 'Usuario';
         
-        if (activeMode === 'collaborate' && selectedTarget) {
+        if (activeMode === 'sync_collaboration' && selectedTarget) {
           if (selectedTarget.type === 'connected') {
             return `¡Hola ${firstName}! 👋 
 
-Estás en modo colaboración con **${selectedTarget.name}**. 
+Estás en modo colaboración síncrona con **${selectedTarget.name}**. 
 
 Puedes hacer preguntas sobre los datos de este MindOp conectado. Por ejemplo:
 • "¿Qué tendencias muestran tus datos?"
 • "Comparte un resumen de tu información"
 • "¿Qué patrones interesantes has encontrado?"
 
-El MindOp target procesará tu consulta y compartirá insights de sus datos contigo.
+El MindOp target procesará tu consulta de forma síncrona y compartirá insights de sus datos contigo.
 
 ¿Qué te gustaría saber?`;
           } else {
             return `¡Hola ${firstName}! 👋 
 
-Estás consultando tu propio MindOp en modo colaboración.
+Estás consultando tu propio MindOp en modo colaboración síncrona.
 
 Puedes preguntarme sobre:
 • Análisis de tendencias en tus datos
@@ -155,6 +153,8 @@ Puedes preguntarme sobre:
           return `¡Hola ${firstName}! 👋 
 
 Soy tu asistente inteligente de MindOp. Estoy aquí para ayudarte a explorar y analizar tus datos de manera conversacional.
+
+En modo **local**, trabajarás directamente con tus datos almacenados.
 
 Puedes preguntarme sobre:
 • Análisis de tendencias en tus datos
@@ -457,14 +457,17 @@ initializePageData();
     
     if (!session?.access_token) {
       throw new Error('No hay sesión activa');
-    }
-
-    // Preparar el payload con conversation_id y target_mindop_id
+    }    // Preparar el payload con conversation_id, target_mindop_id, mindop_id y mode
     const payload: { 
       query: string; 
+      mindop_id?: string;
       target_mindop_id?: string; 
       conversation_id?: string;
-    } = { query };
+      mode: 'local' | 'sync_collaboration' | 'async_task';
+    } = { 
+      query,
+      mode: activeMode
+    };
     
     // Agregar conversation_id si existe una conversación activa
     if (currentConversationId) {
@@ -473,10 +476,27 @@ initializePageData();
     } else {
       console.log(`🆕 [${reqId}] Nueva conversación`);
     }
-    
-    if (activeMode === 'collaborate' && selectedTarget && selectedTarget.type === 'connected') {
-      payload.target_mindop_id = selectedTarget.id;
-      console.log(`🤝 [${reqId}] Modo colaboración activado, target:`, selectedTarget.name, selectedTarget.id);
+      // Para modo local, agregar mindop_id del usuario
+    if (activeMode === 'local') {
+      if (!userMindOpId) {
+        throw new Error('No se encontró el MindOp del usuario para modo local');
+      }
+      payload.mindop_id = userMindOpId;
+      console.log(`🏠 [${reqId}] Modo local activado, mindop_id:`, userMindOpId);
+    }
+      // Para modo sync_collaboration, agregar tanto mindop_id como target_mindop_id
+    if (activeMode === 'sync_collaboration') {
+      if (!userMindOpId) {
+        throw new Error('No se encontró el MindOp del usuario para modo sync_collaboration');
+      }
+      payload.mindop_id = userMindOpId;
+      
+      if (selectedTarget && selectedTarget.type === 'connected') {
+        payload.target_mindop_id = selectedTarget.id;
+        console.log(`🤝 [${reqId}] Modo sync_collaboration activado, mindop_id:`, userMindOpId, 'target:', selectedTarget.name, selectedTarget.id);
+      } else {
+        throw new Error('Se requiere seleccionar un MindOp conectado para colaboración síncrona');
+      }
     }
 
     console.log(`📞 [${reqId}] Llamando a mindop-service con payload:`, payload);
@@ -531,6 +551,7 @@ initializePageData();
     // Generar Request ID único para tracking
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log(`🚀 [${requestId}] Iniciando request: "${inputText.substring(0, 50)}..."`);
+    console.log(`📊 [${requestId}] Estado actual - currentConversationId:`, currentConversationId);
     
     // Protección contra múltiples requests simultáneos
     if (requestInProgress) {
@@ -558,9 +579,75 @@ initializePageData();
       const response = await callMindOpService(originalQuery, requestId);
       
       const duration = Date.now() - startTime;
-      console.log(`✅ [${requestId}] Response received in ${duration}ms`);
-      
-      if (response.success && response.response) {
+      console.log(`✅ [${requestId}] Response received in ${duration}ms`);      if (response.success && response.response) {        // ✅ CRÍTICO: Determinar el ID de conversación final
+        let finalConversationId: string;
+        
+        // ✅ NUEVO: Verificar si se debe forzar una nueva conversación
+        const forceNewConversation = sessionStorage.getItem('forceNewConversation') === 'true';
+          if (!currentConversationId || forceNewConversation) {
+          console.log(`🆕 [${requestId}] Nueva conversación requerida (currentId: ${currentConversationId}, force: ${forceNewConversation})`);
+          finalConversationId = await ensureConversationExists(undefined, true); // Forzar nueva conversación
+          
+          // Limpiar el flag después de usar
+          if (forceNewConversation) {
+            sessionStorage.removeItem('forceNewConversation');
+            console.log(`🧹 [${requestId}] Flag forceNewConversation limpiado`);
+          }
+        } else if (response.conversation_id && response.conversation_id === currentConversationId) {
+          // El backend devolvió el mismo conversation_id que tenemos activo
+          finalConversationId = response.conversation_id;
+          console.log(`🔄 [${requestId}] Backend confirmó conversation_id actual:`, finalConversationId);
+        } else if (currentConversationId) {
+          // Tenemos una conversación activa, usarla
+          finalConversationId = currentConversationId;
+          console.log(`📋 [${requestId}] Usando conversación activa:`, finalConversationId);        } else {
+          // Fallback: crear nueva conversación
+          console.log(`🆕 [${requestId}] Fallback - creando nueva conversación...`);
+          finalConversationId = await ensureConversationExists(undefined, false);
+        }
+
+        console.log(`💾 [${requestId}] Guardando mensajes en conversación:`, finalConversationId);
+
+        // Guardar mensaje del usuario en la BD
+        try {
+          await saveMessageToDatabase(
+            finalConversationId, 
+            originalQuery, 
+            'user',
+            userMindOpId! // Usuario siempre usa su propio MindOp ID
+          );
+          console.log(`💾 [${requestId}] Mensaje de usuario guardado en BD`);
+        } catch (error) {
+          console.error(`❌ [${requestId}] Error guardando mensaje de usuario:`, error);
+        }
+
+        // Guardar mensaje del sistema en la BD
+        try {
+          // Determinar el MindOp ID del agente según el modo
+          let agentMindOpId: string;
+          
+          if (activeMode === 'local') {
+            // En modo local, el agente es el propio MindOp del usuario
+            agentMindOpId = userMindOpId!;
+          } else if (activeMode === 'sync_collaboration' && selectedTarget?.type === 'connected') {
+            // En modo colaboración con MindOp conectado, el agente es el target
+            agentMindOpId = selectedTarget.id;
+          } else {
+            // En otros casos (colaboración con propio MindOp), usar el propio ID
+            agentMindOpId = userMindOpId!;
+          }
+          
+          await saveMessageToDatabase(
+            finalConversationId, 
+            response.response, 
+            'agent',
+            agentMindOpId
+          );
+          console.log(`💾 [${requestId}] Mensaje de sistema guardado en BD con agentMindOpId: ${agentMindOpId}`);
+        } catch (error) {
+          console.error(`❌ [${requestId}] Error guardando mensaje de sistema:`, error);
+        }
+
         const systemMessage: ConversationMessage = {
           id: Date.now() + 1,
           type: 'system',
@@ -569,10 +656,10 @@ initializePageData();
         };
         setConversation(prev => [...prev, systemMessage]);
         
-        // Update conversation ID if backend created a new conversation
-        if (response.conversation_id && response.conversation_id !== currentConversationId) {
-          console.log(`🆕 [${requestId}] Nueva conversación creada: ${response.conversation_id}`);
-          setCurrentConversationId(response.conversation_id);
+        // ✅ CRÍTICO: Actualizar el currentConversationId si es diferente
+        if (finalConversationId !== currentConversationId) {
+          console.log(`🔄 [${requestId}] Actualizando currentConversationId de ${currentConversationId} a ${finalConversationId}`);
+          setCurrentConversationId(finalConversationId);
           // Refresh conversation list to show the new conversation
           loadConversationList();
         }
@@ -697,8 +784,112 @@ initializePageData();
       </div>
     );
   };
-
   // === CONVERSATION MANAGEMENT FUNCTIONS ===
+  // Función para guardar un mensaje en la base de datos
+  const saveMessageToDatabase = async (
+    conversationId: string, 
+    content: string, 
+    senderRole: 'user' | 'agent',
+    senderMindopId: string // Ahora es requerido, no opcional
+  ) => {
+    try {
+      if (!senderMindopId) {
+        throw new Error(`sender_mindop_id es requerido para sender_role: ${senderRole}`);
+      }
+
+      const { error } = await supabase
+        .from('conversation_messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_role: senderRole,
+          sender_mindop_id: senderMindopId,
+          content: content
+        });
+
+      if (error) {
+        console.error('❌ Error guardando mensaje:', error);
+        throw error;
+      }
+
+      console.log('✅ Mensaje guardado en BD:', { 
+        conversationId, 
+        senderRole, 
+        senderMindopId, 
+        content: content.substring(0, 50) + '...' 
+      });
+    } catch (error) {
+      console.error('❌ Error inesperado guardando mensaje:', error);
+      throw error;
+    }
+  };  // Función para crear o actualizar una conversación
+  const ensureConversationExists = async (conversationId?: string, forceNew: boolean = false): Promise<string> => {
+    if (!user || !userMindOpId) {
+      throw new Error('Usuario o MindOp no disponible');
+    }
+
+    // ✅ CRÍTICO: Si conversationId es null/undefined O se fuerza nueva conversación, SIEMPRE crear nueva
+    if (!conversationId || forceNew) {
+      console.log('🆕 Creando nueva conversación (conversationId:', conversationId, ', forceNew:', forceNew, ')');
+      
+      // Crear nueva conversación
+      const { data: newConv, error: createError } = await supabase
+        .from('conversations')
+        .insert({
+          user_id: user.id,
+          mindop_id: userMindOpId,
+          title: null, // Se generará automáticamente basado en el primer mensaje
+        })
+        .select('id')
+        .single();
+
+      if (createError || !newConv) {
+        console.error('❌ Error creando conversación:', createError);
+        throw createError || new Error('No se pudo crear la conversación');
+      }
+
+      console.log('✅ Nueva conversación creada:', newConv.id);
+      return newConv.id;
+    }
+
+    // Si tenemos un ID de conversación, verificar que existe
+    const { data: existingConv, error } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .single();
+
+    if (!error && existingConv) {
+      console.log('✅ Conversación existente encontrada:', conversationId);
+      // Actualizar timestamp de la conversación
+      await supabase
+        .from('conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
+      
+      return conversationId;
+    }
+
+    // Si llegamos aquí, el conversationId no existe, crear nueva
+    console.log('🆕 Conversación no encontrada, creando nueva...');
+    
+    const { data: newConv, error: createError } = await supabase
+      .from('conversations')
+      .insert({
+        user_id: user.id,
+        mindop_id: userMindOpId,
+        title: null,
+      })
+      .select('id')
+      .single();
+
+    if (createError || !newConv) {
+      console.error('❌ Error creando conversación:', createError);
+      throw createError || new Error('No se pudo crear la conversación');
+    }
+
+    console.log('✅ Nueva conversación creada (fallback):', newConv.id);
+    return newConv.id;
+  };
 
   // Función para cargar la lista de conversaciones
   const loadConversationList = async () => {
@@ -767,17 +958,19 @@ initializePageData();
       setLoadingConversations(false);
     }
   };
-
   // Función para cargar una conversación específica
   const loadConversation = async (conversationId: string) => {
     if (!conversationId) return;
 
     setIsLoading(true);
-    try {      const { data: messages, error } = await supabase
+    try {
+      const { data: messages, error } = await supabase
         .from('conversation_messages')
         .select('*')
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true }) as { data: StoredMessage[] | null, error: any };      if (error) {
+        .order('created_at', { ascending: true }) as { data: StoredMessage[] | null, error: any };
+
+      if (error) {
         console.error('❌ Error cargando mensajes:', error);
         return;
       }
@@ -800,25 +993,36 @@ initializePageData();
       setConversation(conversationMessages);
       setCurrentConversationId(conversationId);
       
-      console.log('✅ Conversación cargada:', conversationId, 'Mensajes:', conversationMessages.length);
+      console.log('✅ Conversación cargada desde BD:', conversationId, 'Mensajes:', conversationMessages.length);
     } catch (error) {
       console.error('❌ Error cargando conversación:', error);
     } finally {
       setIsLoading(false);
     }
   };
-
   // Función para eliminar una conversación
   const deleteConversation = async (conversationId: string) => {
     try {
-      const { error } = await supabase
+      // Primero eliminar todos los mensajes de la conversación
+      const { error: messagesError } = await supabase
+        .from('conversation_messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+
+      if (messagesError) {
+        console.error('❌ Error eliminando mensajes:', messagesError);
+        return;
+      }
+
+      // Luego eliminar la conversación
+      const { error: conversationError } = await supabase
         .from('conversations')
         .delete()
         .eq('id', conversationId)
         .eq('user_id', user?.id);
 
-      if (error) {
-        console.error('❌ Error eliminando conversación:', error);
+      if (conversationError) {
+        console.error('❌ Error eliminando conversación:', conversationError);
         return;
       }
 
@@ -830,39 +1034,45 @@ initializePageData();
         startNewConversation();
       }
 
-      console.log('✅ Conversación eliminada');
+      console.log('✅ Conversación y mensajes eliminados de BD');
     } catch (error) {
       console.error('❌ Error eliminando conversación:', error);
     }
   };
-
+  
   // Función para iniciar una nueva conversación
   const startNewConversation = () => {
     console.log('🆕 Iniciando nueva conversación...');
+    
+    // ✅ CRÍTICO: Limpiar completamente el estado de conversación
     setCurrentConversationId(null);
     setConversation([]);
     
-    // Regenerar mensaje de bienvenida
+    // ✅ NUEVO: Agregar un flag para forzar nueva conversación
+    // Esto asegura que el próximo mensaje SIEMPRE cree una nueva conversación
+    sessionStorage.setItem('forceNewConversation', 'true');
+    
+    // Regenerar mensaje de bienvenida (solo para UI, no se guarda en BD)
     const firstName = user?.user_metadata?.first_name || 'Usuario';
     const getWelcomeMessage = () => {
-      if (activeMode === 'collaborate' && selectedTarget) {
+      if (activeMode === 'sync_collaboration' && selectedTarget) {
         if (selectedTarget.type === 'connected') {
           return `¡Hola ${firstName}! 👋 
 
-Estás en modo colaboración con **${selectedTarget.name}**. 
+Estás en modo colaboración síncrona con **${selectedTarget.name}**. 
 
 Puedes hacer preguntas sobre los datos de este MindOp conectado. Por ejemplo:
 • "¿Qué tendencias muestran tus datos?"
 • "Comparte un resumen de tu información"
 • "¿Qué patrones interesantes has encontrado?"
 
-El MindOp target procesará tu consulta y compartirá insights de sus datos contigo.
+El MindOp target procesará tu consulta de forma síncrona y compartirá insights de sus datos contigo.
 
 ¿Qué te gustaría saber?`;
         } else {
           return `¡Hola ${firstName}! 👋 
 
-Estás consultando tu propio MindOp en modo colaboración.
+Estás consultando tu propio MindOp en modo colaboración síncrona.
 
 Puedes preguntarme sobre:
 • Análisis de tendencias en tus datos
@@ -876,6 +1086,8 @@ Puedes preguntarme sobre:
         return `¡Hola ${firstName}! 👋 
 
 Soy tu asistente inteligente de MindOp. Estoy aquí para ayudarte a explorar y analizar tus datos de manera conversacional.
+
+En modo **local**, trabajarás directamente con tus datos almacenados.
 
 Puedes preguntarme sobre:
 • Análisis de tendencias en tus datos
@@ -894,25 +1106,27 @@ Puedes preguntarme sobre:
       timestamp: new Date(),
     };
 
-  setConversation([welcomeMessage]);
+    // Nota: El mensaje de bienvenida es solo para la UI, no se guarda en BD
+    setConversation([welcomeMessage]);
+    
+    console.log('✅ Nueva conversación iniciada, currentConversationId:', null);
+    console.log('🚩 Flag forceNewConversation establecido en sessionStorage');
   };
-
   // === END CONVERSATION MANAGEMENT FUNCTIONS ===
   
-
-  // Agregar esto justo antes del return principal:
-
+  // Verificar si MindOp está inicializado antes de renderizar
   if (!mindOpInitialized) {
-  return (
-    <div className="h-full flex items-center justify-center bg-gray-50">
-      <div className="flex flex-col items-center space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
-        <p className="text-gray-600">Inicializando chat...</p>
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+          <p className="text-gray-600">Inicializando chat...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
   }
-  return (    <div className="h-full flex bg-gray-50 overflow-hidden relative">
+
+  return (<div className="h-full flex bg-gray-50 overflow-hidden relative">
       {/* Sidebar de Conversaciones */}
       <div className={`${
         sidebarOpen ? 'w-80' : 'w-0'
@@ -1092,12 +1306,11 @@ Puedes preguntarme sobre:
             <form onSubmit={handleSendMessage} className="space-y-3">
               {/* Selector de Colaboración Integrado */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  {/* Botón Mi MindOp */}
+                <div className="flex items-center space-x-2">                  {/* Botón Mi MindOp */}
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveMode('mindop');
+                      setActiveMode('local');
                       setShowTargetSelector(false);
                       const ownTarget = availableTargets.find(t => t.type === 'own');
                       if (ownTarget) {
@@ -1105,7 +1318,7 @@ Puedes preguntarme sobre:
                       }
                     }}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 flex items-center space-x-1.5 ${
-                      activeMode === 'mindop'
+                      activeMode === 'local'
                         ? 'bg-gray-900 text-white shadow-sm'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
@@ -1119,7 +1332,7 @@ Puedes preguntarme sobre:
                     <button
                       type="button"
                       onClick={() => {
-                        setActiveMode('collaborate');
+                        setActiveMode('sync_collaboration');
                         if (availableTargets.length > 1) {
                           setShowTargetSelector(!showTargetSelector);
                         } else {
@@ -1131,7 +1344,7 @@ Puedes preguntarme sobre:
                       }}
                       disabled={loadingConnections}
                       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 flex items-center space-x-1.5 ${
-                        activeMode === 'collaborate'
+                        activeMode === 'sync_collaboration'
                           ? 'bg-gray-900 text-white shadow-sm'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50'
                       }`}
@@ -1142,13 +1355,13 @@ Puedes preguntarme sobre:
                         <Users className="w-3.5 h-3.5" />
                       )}
                       <span>Colaborar</span>
-                      {activeMode === 'collaborate' && availableTargets.length > 1 && (
+                      {activeMode === 'sync_collaboration' && availableTargets.length > 1 && (
                         <ChevronDown className="w-3 h-3" />
                       )}
                     </button>
 
                     {/* Dropdown para selección de target */}
-                    {showTargetSelector && activeMode === 'collaborate' && availableTargets.length > 1 && (
+                    {showTargetSelector && activeMode === 'sync_collaboration' && availableTargets.length > 1 && (
                       <div className="absolute bottom-full mb-2 left-0 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
                         {availableTargets.map((target) => (
                           <button
@@ -1190,7 +1403,7 @@ Puedes preguntarme sobre:
                 </div>
 
                 {/* Indicador de Target Actual */}
-                {activeMode === 'collaborate' && selectedTarget && (
+                {activeMode === 'sync_collaboration' && selectedTarget && (
                   <div className="flex items-center space-x-1.5 px-2 py-1 bg-blue-50 border border-blue-200 rounded-full">
                     {selectedTarget.type === 'connected' ? (
                       <Users className="w-3 h-3 text-blue-600" />
@@ -1215,9 +1428,8 @@ Puedes preguntarme sobre:
                         e.preventDefault();
                         handleSendMessage(e);
                       }
-                    }}
-                    placeholder={
-                      activeMode === 'collaborate' && selectedTarget?.type === 'connected'
+                    }}                    placeholder={
+                      activeMode === 'sync_collaboration' && selectedTarget?.type === 'connected'
                         ? `Colaborar con ${selectedTarget.name}...`
                         : "Escribe tu consulta aquí..."
                     }
@@ -1239,7 +1451,7 @@ Puedes preguntarme sobre:
               </div>
 
               {/* Indicador de Conexiones Disponibles */}
-              {!loadingConnections && connectedMindOps.length > 0 && activeMode === 'collaborate' && (
+              {!loadingConnections && connectedMindOps.length > 0 && activeMode === 'sync_collaboration' && (
                 <div className="flex items-center justify-center pt-1">
                   <div className="flex items-center px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full">
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></div>
@@ -1262,8 +1474,7 @@ Puedes preguntarme sobre:
                 </div>
               )}
             </form>
-          </div>
-        </div>
+          </div>        </div>
       </div>
     </div>
   );
