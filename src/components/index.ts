@@ -5,3 +5,4 @@ export { default as SignupForm } from './SignupForm';
 export { default as AuthPage } from './AuthPage';
 export { default as ProtectedRoute } from './ProtectedRoute';
 export { CollaborationDashboard } from './CollaborationDashboard';
+export { ActivityChart, StatsOverview, ProductivityChart, CollaborationMetrics } from './ProfileCharts';
