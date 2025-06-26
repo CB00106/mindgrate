@@ -799,6 +799,9 @@ async function handleSyncCollaboration(
 ): Promise<Response> {
   try {
     console.log(`🤝 SYNC COLLABORATION: Enhanced processing`)
+    console.log(`📊 Requester MindOp: ${requesterMindopId}`)
+    console.log(`🎯 Target MindOp: ${targetMindopId}`)
+    console.log(`💬 Query: "${query}"`)
     
     // Get target MindOp details
     const { data: targetMindop, error: mindopError } = await supabase
@@ -808,12 +811,98 @@ async function handleSyncCollaboration(
       .single()
     
     if (mindopError || !targetMindop) {
+      console.error('❌ Target MindOp not found:', mindopError)
       return new Response(
         JSON.stringify({ error: 'Target MindOp not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-      // Execute full RAG pipeline for target MindOp
+
+    console.log(`✅ Target MindOp found: "${targetMindop.mindop_name}" (Owner: ${targetMindop.user_id})`)
+
+    // Check if target MindOp has any data (chunks)
+    const { count: chunkCount, error: countError } = await supabase
+      .from('mindop_document_chunks')
+      .select('*', { count: 'exact', head: true })
+      .eq('mindop_id', targetMindopId)
+
+    console.log(`📊 Chunks available for target MindOp: ${chunkCount}`)
+
+    if (countError) {
+      console.error('❌ Error checking chunks:', countError)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Error accessing target MindOp data',
+          details: countError.message 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // If no chunks found, provide helpful feedback
+    if (!chunkCount || chunkCount === 0) {
+      console.log('⚠️ No chunks found for target MindOp - providing helpful message')
+      
+      const helpfulMessage = `El MindOp "${targetMindop.mindop_name}" aún no tiene documentos cargados o procesados. 
+
+Para colaborar con este MindOp, necesita:
+1. Cargar archivos (CSV, documentos, etc.)
+2. Esperar a que se procesen los datos
+3. Intentar la colaboración nuevamente
+
+Si crees que debería haber datos disponibles, contacta al propietario del MindOp o verifica que los archivos se hayan cargado correctamente.`
+
+      // Log the collaboration attempt even when no data is found
+      await supabase
+        .from('mindop_collaboration_tasks')
+        .insert({
+          requester_mindop_id: requesterMindopId,
+          target_mindop_id: targetMindopId,
+          requester_user_query: query,
+          target_mindop_response: helpfulMessage,
+          status: 'completed_no_data',
+          metadata: {
+            mode: 'sync',
+            processed_at: new Date().toISOString(),
+            issue: 'no_chunks_available',
+            chunk_count: 0
+          }
+        })
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          response: helpfulMessage,
+          metadata: {
+            target_mindop_name: targetMindop.mindop_name,
+            mode: 'sync_collaboration',
+            issue: 'no_data_available',
+            chunk_count: 0,
+            enhanced: true
+          }
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Get sample chunk info for debugging
+    const { data: sampleChunk } = await supabase
+      .from('mindop_document_chunks')
+      .select('id, source_csv_name, created_at')
+      .eq('mindop_id', targetMindopId)
+      .limit(1)
+      .single()
+
+    if (sampleChunk) {
+      console.log(`📄 Sample chunk info:`, {
+        id: sampleChunk.id,
+        source: sampleChunk.source_csv_name,
+        created: sampleChunk.created_at
+      })
+    }
+
+    // Execute full RAG pipeline for target MindOp
+    console.log('🚀 Executing RAG pipeline...')
     const response = await orchestrateRAG(
       supabase,
       genAI,
@@ -822,7 +911,9 @@ async function handleSyncCollaboration(
       []
     )
     
-    // Log collaboration
+    console.log(`✅ RAG response generated (${response.length} characters)`)
+    
+    // Enhanced collaboration logging
     await supabase
       .from('mindop_collaboration_tasks')
       .insert({
@@ -833,16 +924,22 @@ async function handleSyncCollaboration(
         status: 'response_received_by_requester',
         metadata: {
           mode: 'sync',
-          processed_at: new Date().toISOString()
+          processed_at: new Date().toISOString(),
+          chunk_count: chunkCount,
+          response_length: response.length,
+          target_mindop_name: targetMindop.mindop_name,
+          sample_chunk_id: sampleChunk?.id
         }
       })
-      return new Response(
+      
+    return new Response(
       JSON.stringify({ 
         success: true,
         response,
         metadata: {
           target_mindop_name: targetMindop.mindop_name,
           mode: 'sync_collaboration',
+          chunk_count: chunkCount,
           enhanced: true
         }
       }),
@@ -972,29 +1069,32 @@ serve(async (req) => {
     )
   }
 
-  try {
-    // Initialize clients
+  try {    // Initialize clients
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY')!
     
     // Log environment variables status (without exposing values)
     console.log('🔧 Environment check:', {
-      supabase_configured: !!supabaseUrl && !!supabaseAnonKey,
+      supabase_configured: !!supabaseUrl && !!supabaseServiceKey,
       gemini_configured: !!geminiApiKey,
       openai_configured: !!Deno.env.get('OPENAI_API_KEY'),
       google_search_configured: !!Deno.env.get('GOOGLE_CUSTOM_SEARCH_API_KEY') && !!Deno.env.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID')
-    })
-      // Initialize Supabase client with user authorization
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    })    // Initialize Supabase client with SERVICE ROLE for full access
+    // This bypasses RLS and allows access to all data needed for collaborations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    
+    // Create a separate client for user authentication validation
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
-        headers: { Authorization: req.headers.get('Authorization')! },
+        headers: { Authorization: req.headers.get('authorization')! },
       },
     })
     
     const genAI = new GoogleGenerativeAI(geminiApiKey)
     
-    // Get user from auth header
+    // Get user from auth header using the user-specific client
     const authHeader = req.headers.get('authorization')
     if (!authHeader) {
       return new Response(
@@ -1003,7 +1103,7 @@ serve(async (req) => {
       )
     }
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     )
     
