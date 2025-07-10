@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { logger } from '@/utils/logger';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -10,7 +11,7 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
       // TODO: Implement Supabase authentication
-    console.log('Login attempt:', { email, password: '[REDACTED]' });
+    logger.debug('Auth', 'Login attempt:', { email, password: '[REDACTED]' });
     
     // Simulate API call
     setTimeout(() => {

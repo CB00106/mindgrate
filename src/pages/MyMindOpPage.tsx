@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useMindOp } from '@/hooks/useMindOp';
 import { CreateMindopData } from '@/types/mindops';
 import supabase from '@/services/supabaseClient';
+import { logger } from '@/utils/logger';
 
 interface FormData {
   mindop_name: string;

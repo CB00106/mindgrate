@@ -4,6 +4,7 @@ import { useMindOp } from '@/hooks/useMindOp';
 import { ProfileService, type ProfileStats, type RecentActivity, type ChartData } from '@/services/profileService';
 import { ActivityChart, StatsOverview, ProductivityChart, CollaborationMetrics } from '@/components/ProfileCharts';
 import type { Mindop } from '@/types/mindops';
+import { logger } from '@/utils/logger';
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
@@ -28,7 +29,7 @@ const ProfilePage: React.FC = () => {
       if (!user?.id || !mindop?.id || mindOpLoading) return;      setDataLoading(true);
       setError(null);
       try {
-        console.log('🔄 Fetching profile data for user:', user.id, 'mindop:', mindop.id);
+        logger.debug('ProfilePage', 'Fetching profile data for user:', user.id, 'mindop:', mindop.id);
         
         const [profileStats, recentMindOpsData, activityData, chartDataResult] = await Promise.all([
           ProfileService.getProfileStats(user.id, mindop.id),
@@ -37,14 +38,14 @@ const ProfilePage: React.FC = () => {
           ProfileService.getChartData(user.id, mindop.id)
         ]);
 
-        console.log('✅ Profile data fetched:', { profileStats, recentMindOpsData: recentMindOpsData.length, activityData: activityData.length, chartDataResult: chartDataResult.length });
+        logger.debug('ProfilePage', 'Profile data fetched:', { profileStats, recentMindOpsData: recentMindOpsData.length, activityData: activityData.length, chartDataResult: chartDataResult.length });
 
         setStats(profileStats);
         setRecentMindOps(recentMindOpsData);
         setRecentActivity(activityData);
         setChartData(chartDataResult);
       } catch (error) {
-        console.error('❌ Error fetching profile data:', error);
+        logger.error('Error fetching profile data:', error);
         setError('Error al cargar los datos del perfil. Por favor, intenta nuevamente.');
       } finally {
         setDataLoading(false);

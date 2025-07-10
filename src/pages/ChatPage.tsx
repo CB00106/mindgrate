@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import { supabase } from '@/services/supabaseClient';
 import { useMindOp } from '@/hooks/useMindOp';
+import { logger } from '@/utils/logger';
 
 interface ConversationMessage {
   id: number;
@@ -196,27 +197,25 @@ Puedes preguntarme sobre:
 const initializePageData = async () => {
   // Wait for mindop to be initialized
   if (!mindOpInitialized) {
-    console.log('🔄 [ChatPage] Waiting for mindop initialization...');
+    logger.debug('ChatPage', 'Waiting for mindop initialization...');
     return;
   }
 
   if (!userMindOpId) {
-    console.log('ℹ️ [ChatPage] User has no MindOp yet, skipping data initialization');
+    logger.debug('ChatPage', 'User has no MindOp yet, skipping data initialization');
     return;
   }
 
-  console.log('✅ [ChatPage] MindOp initialized, loading page data...', { userMindOpId });
-
-  try {
-    await Promise.all([
-      loadUserConnections(),
-      initializeCollaborationTargets(),
-      loadConversationList()
-    ]);
-    console.log('✅ [ChatPage] Page data initialized successfully');
-  } catch (error) {
-    console.error('❌ [ChatPage] Error initializing page data:', error);
-  }
+  logger.debug('ChatPage', 'MindOp initialized, loading page data...', { userMindOpId });    try {
+      await Promise.all([
+        loadUserConnections(),
+        initializeCollaborationTargets(),
+        loadConversationList()
+      ]);
+      logger.debug('ChatPage', 'Page data initialized successfully');
+    } catch (error) {
+      logger.error('ChatPage Error initializing page data:', error);
+    }
 };
 
 initializePageData();
@@ -245,7 +244,7 @@ initializePageData();
 
     // Iniciar polling solo si no hay uno activo
     if (!pollingInterval) {
-      console.log('🔄 Iniciando polling para respuestas de colaboración...');
+      logger.collaboration('Iniciando polling para respuestas de colaboración...');
       const interval = setInterval(async () => {
         await checkForCollaborationResponses();
       }, 8000); // Revisar cada 8 segundos
@@ -276,12 +275,12 @@ initializePageData();
 
     setLoadingConnections(true);
     try {
-      console.log('🔄 Cargando conexiones para MindOp:', userMindOpId);
+      logger.debug('ChatPage', 'Cargando conexiones para MindOp:', userMindOpId);
       
       // Obtener MindOps que el usuario sigue (conexiones aprobadas)
       const followingData = await notificationService.getFollowingMindOps(userMindOpId);
       
-      console.log('📋 Conexiones obtenidas:', followingData);
+      logger.debug('ChatPage', 'Conexiones obtenidas:', followingData);
       
       // Mapear a la estructura que necesitamos
       const connectedMindOps: ConnectedMindOp[] = followingData.map(connection => ({
@@ -292,10 +291,10 @@ initializePageData();
       }));
 
       setConnectedMindOps(connectedMindOps);
-      console.log('✅ Conexiones cargadas:', connectedMindOps.length);
+      logger.debug('ChatPage', 'Conexiones cargadas:', connectedMindOps.length);
       
     } catch (error) {
-      console.error('❌ Error cargando conexiones:', error);
+      logger.error('Error cargando conexiones:', error);
     } finally {
       setLoadingConnections(false);
     }
@@ -350,7 +349,7 @@ initializePageData();
     if (!userMindOpId || pendingCollaborationTasks.size === 0) return;
 
     try {
-      console.log('🔄 Verificando respuestas de colaboración...', Array.from(pendingCollaborationTasks));
+      logger.collaboration('Verificando respuestas de colaboración...', Array.from(pendingCollaborationTasks));
       
       // Consultar tareas completadas
       const { data: completedTasks, error } = await supabase
@@ -375,16 +374,16 @@ initializePageData();
         .in('id', Array.from(pendingCollaborationTasks));
 
       if (error) {
-        console.error('❌ Error verificando respuestas de colaboración:', error);
+        logger.error('Error verificando respuestas de colaboración:', error);
         return;
       }
 
       if (!completedTasks || completedTasks.length === 0) {
-        console.log('📭 No hay respuestas nuevas');
+        logger.debug('ChatPage', 'No hay respuestas nuevas');
         return;
       }
 
-      console.log(`✅ Encontradas ${completedTasks.length} respuestas nuevas`);
+      logger.collaboration(`Encontradas ${completedTasks.length} respuestas nuevas`);
       
       // Procesar cada respuesta
       for (const task of completedTasks) {
@@ -448,12 +447,12 @@ initializePageData();
     }
   };  const callMindOpService = async (query: string, requestId?: string): Promise<any> => {
     const reqId = requestId || `call_${Date.now()}`;
-    console.log(`🔐 [${reqId}] Getting session...`);
+    logger.request(reqId, 'Getting session...');
     
     const { data: { session } } = await supabase.auth.getSession();
     
-    console.log(`🔐 [${reqId}] Sesión activa:`, !!session);
-    console.log(`🔑 [${reqId}] Token disponible:`, !!session?.access_token);
+    logger.request(reqId, 'Sesión activa:', !!session);
+    logger.request(reqId, 'Token disponible:', !!session?.access_token);
     
     if (!session?.access_token) {
       throw new Error('No hay sesión activa');
@@ -472,9 +471,9 @@ initializePageData();
     // Agregar conversation_id si existe una conversación activa
     if (currentConversationId) {
       payload.conversation_id = currentConversationId;
-      console.log(`💬 [${reqId}] Conversación activa:`, currentConversationId);
+      logger.request(reqId, 'Conversación activa:', currentConversationId);
     } else {
-      console.log(`🆕 [${reqId}] Nueva conversación`);
+      logger.request(reqId, 'Nueva conversación');
     }
       // Para modo local, agregar mindop_id del usuario
     if (activeMode === 'local') {

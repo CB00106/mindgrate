@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { logger } from '@/utils/logger';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -29,7 +30,7 @@ const Register: React.FC = () => {
     setLoading(true);
     
     // TODO: Implement Supabase authentication
-    console.log('Register attempt:', formData);
+    logger.debug('Auth', 'Register attempt:', formData);
     
     // Simulate API call
     setTimeout(() => {
