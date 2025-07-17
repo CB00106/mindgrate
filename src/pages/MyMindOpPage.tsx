@@ -63,7 +63,7 @@ const MyMindOpPage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error loading document files:', error);
+        logger.error('Error loading document files:', error);
         return;
       }
 
@@ -94,7 +94,7 @@ const MyMindOpPage: React.FC = () => {
 
       setDocumentFiles(files);
     } catch (error) {
-      console.error('Error loading document files:', error);
+      logger.error('Error loading document files:', error);
     } finally {
       setIsLoadingFiles(false);
     }
@@ -134,7 +134,7 @@ const MyMindOpPage: React.FC = () => {
       await loadDocumentFiles();
       
     } catch (error) {
-      console.error('Error deleting CSV file:', error);
+      logger.error('Error deleting CSV file:', error);
       setErrorMessage(`Error al eliminar el archivo: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
       setIsDeletingFile(false);
@@ -221,7 +221,7 @@ const MyMindOpPage: React.FC = () => {
       await handleVectorizeFile();
     } catch (error) {
       // Error is already handled in handleVectorizeFile
-      console.error('File vectorization failed:', error);
+      logger.error('File vectorization failed:', error);
     }
   };
 
@@ -278,8 +278,8 @@ const MyMindOpPage: React.FC = () => {
         fileInput.value = '';
       }      
       // Reload files list to show the new file
-      await loadDocumentFiles();} catch (error) {
-      console.error('Error vectorizing file:', error);
+      await loadDocumentFiles();    } catch (error) {
+      logger.error('Error vectorizing file:', error);
       let errorMessage = 'Error desconocido';
       
       if (error instanceof Error) {
@@ -324,13 +324,13 @@ const MyMindOpPage: React.FC = () => {
       await saveMindOp(submitData);
         // Step 2: If there's a file selected, upload it after MindOp is saved
       if (selectedFile) {
-        console.log('MindOp saved successfully, now uploading file...');
+        logger.log('MindOp saved successfully, now uploading file...');
         try {
           await handleVectorizeFile();
           const fileType = selectedFile.name.toLowerCase().endsWith('.csv') ? 'CSV' : 'Excel';
           setSuccessMessage(`¡Configuración guardada y archivo ${fileType} procesado correctamente!`);
         } catch (fileError) {
-          console.error('Error uploading file:', fileError);
+          logger.error('Error uploading file:', fileError);
           setSuccessMessage('Configuración guardada correctamente, pero hubo un error al procesar el archivo.');
           setErrorMessage(`Error al procesar archivo: ${fileError instanceof Error ? fileError.message : 'Error desconocido'}`);
         }
@@ -338,7 +338,7 @@ const MyMindOpPage: React.FC = () => {
         setSuccessMessage('¡Configuración guardada correctamente!');
       }
     } catch (error) {
-      console.error('Error saving MindOp:', error);
+      logger.error('Error saving MindOp:', error);
       setErrorMessage('Error al guardar los datos. Por favor, inténtalo de nuevo.');
     } finally {
       setIsSubmitting(false);

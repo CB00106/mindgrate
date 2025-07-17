@@ -312,7 +312,7 @@ initializePageData();
         .single();
 
       if (error) {
-        console.error('Error obteniendo propio MindOp:', error);
+        logger.error('Error obteniendo propio MindOp:', error);
         return;
       }
 
@@ -340,7 +340,7 @@ initializePageData();
         setSelectedTarget(targets[0]);
       }
     } catch (error) {
-      console.error('Error inicializando targets:', error);
+      logger.error('Error inicializando targets:', error);
     }
   };
 
@@ -391,18 +391,18 @@ initializePageData();
       }
 
     } catch (error) {
-      console.error('❌ Error en checkForCollaborationResponses:', error);
+      logger.error('❌ Error en checkForCollaborationResponses:', error);
     }
   };
 
   // Función para procesar una respuesta de colaboración individual
   const processCollaborationResponse = async (task: CollaborationTask) => {
     if (!task.response || !task.target_mindop) {
-      console.warn('⚠️ Tarea sin respuesta o target_mindop:', task.id);
+      logger.warn('⚠️ Tarea sin respuesta o target_mindop:', task.id);
       return;
     }
 
-    console.log(`📨 Procesando respuesta de ${task.target_mindop.mindop_name}:`, task.response.substring(0, 100) + '...');
+    logger.log(`📨 Procesando respuesta de ${task.target_mindop.mindop_name}:`, task.response.substring(0, 100) + '...');
 
     // Crear mensaje de respuesta de colaboración
     const collaborationMessage: ConversationMessage = {
@@ -438,12 +438,12 @@ initializePageData();
         .eq('id', task.id);
 
       if (updateError) {
-        console.error('❌ Error actualizando estado de tarea a completed:', updateError);
+        logger.error('❌ Error actualizando estado de tarea a completed:', updateError);
       } else {
-        console.log('✅ Tarea marcada como completada:', task.id);
+        logger.log('✅ Tarea marcada como completada:', task.id);
       }
     } catch (error) {
-      console.error('❌ Error inesperado actualizando estado de tarea:', error);
+      logger.error('❌ Error inesperado actualizando estado de tarea:', error);
     }
   };  const callMindOpService = async (query: string, requestId?: string): Promise<any> => {
     const reqId = requestId || `call_${Date.now()}`;
@@ -481,7 +481,7 @@ initializePageData();
         throw new Error('No se encontró el MindOp del usuario para modo local');
       }
       payload.mindop_id = userMindOpId;
-      console.log(`🏠 [${reqId}] Modo local activado, mindop_id:`, userMindOpId);
+      logger.log(`🏠 [${reqId}] Modo local activado, mindop_id:`, userMindOpId);
     }
       // Para modo sync_collaboration, agregar tanto mindop_id como target_mindop_id
     if (activeMode === 'sync_collaboration') {
@@ -492,18 +492,18 @@ initializePageData();
       
       if (selectedTarget && selectedTarget.type === 'connected') {
         payload.target_mindop_id = selectedTarget.id;
-        console.log(`🤝 [${reqId}] Modo sync_collaboration activado, mindop_id:`, userMindOpId, 'target:', selectedTarget.name, selectedTarget.id);
+        logger.log(`🤝 [${reqId}] Modo sync_collaboration activado, mindop_id:`, userMindOpId, 'target:', selectedTarget.name, selectedTarget.id);
       } else {
         throw new Error('Se requiere seleccionar un MindOp conectado para colaboración síncrona');
       }
     }
 
-    console.log(`📞 [${reqId}] Llamando a mindop-service con payload:`, payload);
+    logger.log(`📞 [${reqId}] Llamando a mindop-service con payload:`, payload);
     
     // Configurar timeout de 60 segundos
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.error(`⏰ [${reqId}] Request timeout después de 60 segundos`);
+      logger.error(`⏰ [${reqId}] Request timeout después de 60 segundos`);
       controller.abort();
     }, 60000);
     
@@ -519,28 +519,28 @@ initializePageData();
       });
 
       clearTimeout(timeoutId);
-      console.log(`📊 [${reqId}] Response status:`, response.status);
+      logger.log(`📊 [${reqId}] Response status:`, response.status);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-        console.error(`❌ [${reqId}] Error response:`, errorData);
+        logger.error(`❌ [${reqId}] Error response:`, errorData);
         const message = errorData.error || `Error ${response.status}`;
         const stack = errorData.stack ? `\nStack trace: ${errorData.stack}` : '';
         throw new Error(message + stack);
       }
 
       const result = await response.json();
-      console.log(`✅ [${reqId}] Success response:`, result);
+      logger.log(`✅ [${reqId}] Success response:`, result);
       
       return result;    } catch (error) {
       clearTimeout(timeoutId);
       
       if (error instanceof Error && error.name === 'AbortError') {
-        console.error(`⏰ [${reqId}] Request fue abortado por timeout`);
+        logger.error(`⏰ [${reqId}] Request fue abortado por timeout`);
         throw new Error('La consulta tardó demasiado tiempo. Por favor, intenta nuevamente.');
       }
       
-      console.error(`💥 [${reqId}] Error en fetch:`, error);
+      logger.error(`💥 [${reqId}] Error en fetch:`, error);
       throw error;
     }
   };  const handleSendMessage = async (e: React.FormEvent) => {
@@ -549,12 +549,12 @@ initializePageData();
 
     // Generar Request ID único para tracking
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`🚀 [${requestId}] Iniciando request: "${inputText.substring(0, 50)}..."`);
-    console.log(`📊 [${requestId}] Estado actual - currentConversationId:`, currentConversationId);
+    logger.log(`🚀 [${requestId}] Iniciando request: "${inputText.substring(0, 50)}..."`);
+    logger.log(`📊 [${requestId}] Estado actual - currentConversationId:`, currentConversationId);
     
     // Protección contra múltiples requests simultáneos
     if (requestInProgress) {
-      console.warn(`⚠️ [${requestId}] Request ya en progreso: ${requestInProgress}. Ignorando nueva request.`);
+      logger.warn(`⚠️ [${requestId}] Request ya en progreso: ${requestInProgress}. Ignorando nueva request.`);
       return;
     }
 
@@ -572,40 +572,40 @@ initializePageData();
     setRequestInProgress(requestId);
 
     try {
-      console.log(`⏳ [${requestId}] Calling MindOp service...`);
+      logger.log(`⏳ [${requestId}] Calling MindOp service...`);
       const startTime = Date.now();
       
       const response = await callMindOpService(originalQuery, requestId);
       
       const duration = Date.now() - startTime;
-      console.log(`✅ [${requestId}] Response received in ${duration}ms`);      if (response.success && response.response) {        // ✅ CRÍTICO: Determinar el ID de conversación final
+      logger.log(`✅ [${requestId}] Response received in ${duration}ms`);      if (response.success && response.response) {        // ✅ CRÍTICO: Determinar el ID de conversación final
         let finalConversationId: string;
         
         // ✅ NUEVO: Verificar si se debe forzar una nueva conversación
         const forceNewConversation = sessionStorage.getItem('forceNewConversation') === 'true';
           if (!currentConversationId || forceNewConversation) {
-          console.log(`🆕 [${requestId}] Nueva conversación requerida (currentId: ${currentConversationId}, force: ${forceNewConversation})`);
+          logger.log(`🆕 [${requestId}] Nueva conversación requerida (currentId: ${currentConversationId}, force: ${forceNewConversation})`);
           finalConversationId = await ensureConversationExists(undefined, true); // Forzar nueva conversación
           
           // Limpiar el flag después de usar
           if (forceNewConversation) {
             sessionStorage.removeItem('forceNewConversation');
-            console.log(`🧹 [${requestId}] Flag forceNewConversation limpiado`);
+            logger.log(`🧹 [${requestId}] Flag forceNewConversation limpiado`);
           }
         } else if (response.conversation_id && response.conversation_id === currentConversationId) {
           // El backend devolvió el mismo conversation_id que tenemos activo
           finalConversationId = response.conversation_id;
-          console.log(`🔄 [${requestId}] Backend confirmó conversation_id actual:`, finalConversationId);
+          logger.log(`🔄 [${requestId}] Backend confirmó conversation_id actual:`, finalConversationId);
         } else if (currentConversationId) {
           // Tenemos una conversación activa, usarla
           finalConversationId = currentConversationId;
-          console.log(`📋 [${requestId}] Usando conversación activa:`, finalConversationId);        } else {
+          logger.log(`📋 [${requestId}] Usando conversación activa:`, finalConversationId);        } else {
           // Fallback: crear nueva conversación
-          console.log(`🆕 [${requestId}] Fallback - creando nueva conversación...`);
+          logger.log(`🆕 [${requestId}] Fallback - creando nueva conversación...`);
           finalConversationId = await ensureConversationExists(undefined, false);
         }
 
-        console.log(`💾 [${requestId}] Guardando mensajes en conversación:`, finalConversationId);
+        logger.log(`💾 [${requestId}] Guardando mensajes en conversación:`, finalConversationId);
 
         // Guardar mensaje del usuario en la BD
         try {
@@ -615,9 +615,9 @@ initializePageData();
             'user',
             userMindOpId! // Usuario siempre usa su propio MindOp ID
           );
-          console.log(`💾 [${requestId}] Mensaje de usuario guardado en BD`);
+          logger.log(`💾 [${requestId}] Mensaje de usuario guardado en BD`);
         } catch (error) {
-          console.error(`❌ [${requestId}] Error guardando mensaje de usuario:`, error);
+          logger.error(`❌ [${requestId}] Error guardando mensaje de usuario:`, error);
         }
 
         // Guardar mensaje del sistema en la BD
@@ -642,9 +642,9 @@ initializePageData();
             'agent',
             agentMindOpId
           );
-          console.log(`💾 [${requestId}] Mensaje de sistema guardado en BD con agentMindOpId: ${agentMindOpId}`);
+          logger.log(`💾 [${requestId}] Mensaje de sistema guardado en BD con agentMindOpId: ${agentMindOpId}`);
         } catch (error) {
-          console.error(`❌ [${requestId}] Error guardando mensaje de sistema:`, error);
+          logger.error(`❌ [${requestId}] Error guardando mensaje de sistema:`, error);
         }
 
         const systemMessage: ConversationMessage = {
@@ -657,7 +657,7 @@ initializePageData();
         
         // ✅ CRÍTICO: Actualizar el currentConversationId si es diferente
         if (finalConversationId !== currentConversationId) {
-          console.log(`🔄 [${requestId}] Actualizando currentConversationId de ${currentConversationId} a ${finalConversationId}`);
+          logger.log(`🔄 [${requestId}] Actualizando currentConversationId de ${currentConversationId} a ${finalConversationId}`);
           setCurrentConversationId(finalConversationId);
           // Refresh conversation list to show the new conversation
           loadConversationList();
@@ -665,12 +665,12 @@ initializePageData();
 
         // Log conversation history usage
         if (response.history_messages_used > 0) {
-          console.log(`💬 [${requestId}] Se utilizaron ${response.history_messages_used} mensajes del historial`);
+          logger.log(`💬 [${requestId}] Se utilizaron ${response.history_messages_used} mensajes del historial`);
         }
 
         // Si es una respuesta de colaboración y contiene collaboration_task_id, agregarlo a tareas pendientes
         if (response.collaboration_task_id) {
-          console.log(`📝 [${requestId}] Nueva tarea de colaboración: ${response.collaboration_task_id}`);
+          logger.log(`📝 [${requestId}] Nueva tarea de colaboración: ${response.collaboration_task_id}`);
           setPendingCollaborationTasks(prev => new Set([...prev, response.collaboration_task_id]));
           
           // Mostrar mensaje informativo sobre el estado de la colaboración
@@ -684,7 +684,7 @@ initializePageData();
           setConversation(prev => [...prev, collaborationStatusMessage]);
         }
       } else {
-        console.error(`❌ [${requestId}] Response error:`, response.error);
+        logger.error(`❌ [${requestId}] Response error:`, response.error);
         const errorMessage: ConversationMessage = {
           id: Date.now() + 1,
           type: 'error',
@@ -694,7 +694,7 @@ initializePageData();
         setConversation(prev => [...prev, errorMessage]);
       }
     } catch (error) {
-      console.error(`💥 [${requestId}] Caught error:`, error);
+      logger.error(`💥 [${requestId}] Caught error:`, error);
       const errorMessage: ConversationMessage = {
         id: Date.now() + 1,
         type: 'error',
@@ -704,7 +704,7 @@ initializePageData();
       };
       setConversation(prev => [...prev, errorMessage]);
     } finally {
-      console.log(`🏁 [${requestId}] Request completed, clearing states`);
+      logger.log(`🏁 [${requestId}] Request completed, clearing states`);
       setIsLoading(false);
       setRequestInProgress(null);
     }
@@ -806,18 +806,18 @@ initializePageData();
         });
 
       if (error) {
-        console.error('❌ Error guardando mensaje:', error);
+        logger.error('❌ Error guardando mensaje:', error);
         throw error;
       }
 
-      console.log('✅ Mensaje guardado en BD:', { 
+      logger.log('✅ Mensaje guardado en BD:', { 
         conversationId, 
         senderRole, 
         senderMindopId, 
         content: content.substring(0, 50) + '...' 
       });
     } catch (error) {
-      console.error('❌ Error inesperado guardando mensaje:', error);
+      logger.error('❌ Error inesperado guardando mensaje:', error);
       throw error;
     }
   };  // Función para crear o actualizar una conversación
@@ -828,7 +828,7 @@ initializePageData();
 
     // ✅ CRÍTICO: Si conversationId es null/undefined O se fuerza nueva conversación, SIEMPRE crear nueva
     if (!conversationId || forceNew) {
-      console.log('🆕 Creando nueva conversación (conversationId:', conversationId, ', forceNew:', forceNew, ')');
+      logger.log('🆕 Creando nueva conversación (conversationId:', conversationId, ', forceNew:', forceNew, ')');
       
       // Crear nueva conversación
       const { data: newConv, error: createError } = await supabase
@@ -842,11 +842,11 @@ initializePageData();
         .single();
 
       if (createError || !newConv) {
-        console.error('❌ Error creando conversación:', createError);
+        logger.error('❌ Error creando conversación:', createError);
         throw createError || new Error('No se pudo crear la conversación');
       }
 
-      console.log('✅ Nueva conversación creada:', newConv.id);
+      logger.log('✅ Nueva conversación creada:', newConv.id);
       return newConv.id;
     }
 
@@ -858,7 +858,7 @@ initializePageData();
       .single();
 
     if (!error && existingConv) {
-      console.log('✅ Conversación existente encontrada:', conversationId);
+      logger.log('✅ Conversación existente encontrada:', conversationId);
       // Actualizar timestamp de la conversación
       await supabase
         .from('conversations')
@@ -869,7 +869,7 @@ initializePageData();
     }
 
     // Si llegamos aquí, el conversationId no existe, crear nueva
-    console.log('🆕 Conversación no encontrada, creando nueva...');
+    logger.log('🆕 Conversación no encontrada, creando nueva...');
     
     const { data: newConv, error: createError } = await supabase
       .from('conversations')
@@ -882,11 +882,11 @@ initializePageData();
       .single();
 
     if (createError || !newConv) {
-      console.error('❌ Error creando conversación:', createError);
+      logger.error('❌ Error creando conversación:', createError);
       throw createError || new Error('No se pudo crear la conversación');
     }
 
-    console.log('✅ Nueva conversación creada (fallback):', newConv.id);
+    logger.log('✅ Nueva conversación creada (fallback):', newConv.id);
     return newConv.id;
   };
 
@@ -910,7 +910,7 @@ initializePageData();
         .order('updated_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error cargando conversaciones:', error);
+        logger.error('❌ Error cargando conversaciones:', error);
         return;
       }
 
@@ -952,7 +952,7 @@ initializePageData();
 
       setConversationList(conversationsWithPreview);
     } catch (error) {
-      console.error('❌ Error cargando conversaciones:', error);
+      logger.error('❌ Error cargando conversaciones:', error);
     } finally {
       setLoadingConversations(false);
     }
@@ -970,12 +970,12 @@ initializePageData();
         .order('created_at', { ascending: true }) as { data: StoredMessage[] | null, error: any };
 
       if (error) {
-        console.error('❌ Error cargando mensajes:', error);
+        logger.error('❌ Error cargando mensajes:', error);
         return;
       }
 
       if (!messages) {
-        console.warn('⚠️ No se encontraron mensajes para la conversación');
+        logger.warn('⚠️ No se encontraron mensajes para la conversación');
         setConversation([]);
         setCurrentConversationId(conversationId);
         return;
@@ -992,9 +992,9 @@ initializePageData();
       setConversation(conversationMessages);
       setCurrentConversationId(conversationId);
       
-      console.log('✅ Conversación cargada desde BD:', conversationId, 'Mensajes:', conversationMessages.length);
+      logger.log('✅ Conversación cargada desde BD:', conversationId, 'Mensajes:', conversationMessages.length);
     } catch (error) {
-      console.error('❌ Error cargando conversación:', error);
+      logger.error('❌ Error cargando conversación:', error);
     } finally {
       setIsLoading(false);
     }
@@ -1009,7 +1009,7 @@ initializePageData();
         .eq('conversation_id', conversationId);
 
       if (messagesError) {
-        console.error('❌ Error eliminando mensajes:', messagesError);
+        logger.error('❌ Error eliminando mensajes:', messagesError);
         return;
       }
 
@@ -1021,7 +1021,7 @@ initializePageData();
         .eq('user_id', user?.id);
 
       if (conversationError) {
-        console.error('❌ Error eliminando conversación:', conversationError);
+        logger.error('❌ Error eliminando conversación:', conversationError);
         return;
       }
 
@@ -1033,15 +1033,15 @@ initializePageData();
         startNewConversation();
       }
 
-      console.log('✅ Conversación y mensajes eliminados de BD');
+      logger.log('✅ Conversación y mensajes eliminados de BD');
     } catch (error) {
-      console.error('❌ Error eliminando conversación:', error);
+      logger.error('❌ Error eliminando conversación:', error);
     }
   };
   
   // Función para iniciar una nueva conversación
   const startNewConversation = () => {
-    console.log('🆕 Iniciando nueva conversación...');
+    logger.log('🆕 Iniciando nueva conversación...');
     
     // ✅ CRÍTICO: Limpiar completamente el estado de conversación
     setCurrentConversationId(null);
@@ -1108,8 +1108,8 @@ Puedes preguntarme sobre:
     // Nota: El mensaje de bienvenida es solo para la UI, no se guarda en BD
     setConversation([welcomeMessage]);
     
-    console.log('✅ Nueva conversación iniciada, currentConversationId:', null);
-    console.log('🚩 Flag forceNewConversation establecido en sessionStorage');
+    logger.log('✅ Nueva conversación iniciada, currentConversationId:', null);
+    logger.log('🚩 Flag forceNewConversation establecido en sessionStorage');
   };
   // === END CONVERSATION MANAGEMENT FUNCTIONS ===
   

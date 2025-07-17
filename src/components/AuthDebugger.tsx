@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
+import { logger } from '@/utils/logger';
 
 interface AuthDebugInfo {
   hasSession: boolean;
@@ -41,7 +42,7 @@ const AuthDebugger: React.FC = () => {
           localStorageKeys: supabaseKeys
         });
       } catch (error) {
-        console.error('Error gathering debug info:', error);
+        logger.error('Error gathering debug info:', error);
       }
     };
 
@@ -77,7 +78,7 @@ const AuthDebugger: React.FC = () => {
       }, 2000);
       
     } catch (error) {
-      console.error('Error clearing auth data:', error);
+      logger.error('Error clearing auth data:', error);
       setMessage('❌ Error al limpiar los datos de autenticación');
     } finally {
       setIsClearing(false);

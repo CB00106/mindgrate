@@ -3,6 +3,7 @@ import { useCollaboration } from '@/hooks/useCollaboration';
 import { useMindOp } from '@/hooks/useMindOp';
 import { useAuth } from '@/hooks/useAuth';
 import type { CollaborationTask } from '@/types/mindops';
+import { logger } from '@/utils/logger';
 
 interface CollaborationDashboardProps {
   className?: string;
@@ -51,7 +52,7 @@ export const CollaborationDashboard: React.FC<CollaborationDashboardProps> = ({ 
       
       setNewTaskForm({ targetMindopId: '', query: '', showForm: false });
     } catch (error) {
-      console.error('Error creating task:', error);
+      logger.error('Error creating task:', error);
     }
   };
 
@@ -63,7 +64,7 @@ export const CollaborationDashboard: React.FC<CollaborationDashboardProps> = ({ 
       const result = await syncCollaboration(syncForm.targetMindopId, syncForm.query);
       setSyncForm(prev => ({ ...prev, response: result.response }));
     } catch (error) {
-      console.error('Error in sync collaboration:', error);
+      logger.error('Error in sync collaboration:', error);
     }
   };
 
@@ -71,7 +72,7 @@ export const CollaborationDashboard: React.FC<CollaborationDashboardProps> = ({ 
     try {
       await processTask(taskId);
     } catch (error) {
-      console.error('Error processing task:', error);
+      logger.error('Error processing task:', error);
     }
   };
   const getStatusColor = (status: CollaborationTask['status']) => {

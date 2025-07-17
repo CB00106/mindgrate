@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components';
+import { logger } from '@/utils/logger';
 
 interface LoginFormProps {
   onToggleMode?: () => void;
@@ -88,7 +89,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
         onSuccess?.();
       }
     } catch (err) {
-      console.error('Login error:', err);
+      logger.error('Login error:', err);
       setState(prev => ({ 
         ...prev, 
         loading: false, 
@@ -128,7 +129,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
         window.location.reload();
       }, 1500);
     } catch (error) {
-      console.error('Error clearing session:', error);
+      logger.error('Error clearing session:', error);
       setState(prev => ({ 
         ...prev, 
         error: 'Error al limpiar la sesión' 

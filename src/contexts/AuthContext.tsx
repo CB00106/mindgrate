@@ -2,6 +2,7 @@ import React, { createContext, useEffect, useState } from 'react';
 import { User, Session, AuthResponse, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/services/supabaseClient';
 import { handleAuthError } from '@/utils/authRecovery';
+import { logger } from '@/utils/logger';
 
 interface SignUpOptions {
   data?: Record<string, unknown>;
@@ -46,13 +47,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Prevent concurrent auth processing
         if (isProcessingAuth) {
-          console.log(`🔄 [AuthContext] Already processing auth, skipping ${event}`);
+          logger.log(`🔄 [AuthContext] Already processing auth, skipping ${event}`);
           return;
         }
         
         isProcessingAuth = true;
 
-        console.log(`🔄 [AuthContext] Auth event: ${event}`, { 
+        logger.log(`🔄 [AuthContext] Auth event: ${event}`, { 
           hasSession: !!session, 
           hasUser: !!session?.user 
         });
@@ -61,17 +62,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Handle all auth events in a unified way
           switch (event) {
             case 'INITIAL_SESSION':
-              console.log('🔄 [AuthContext] Processing INITIAL_SESSION event');
+              logger.log('🔄 [AuthContext] Processing INITIAL_SESSION event');
               handleAuthState(session, 'INITIAL_SESSION');
               break;
               
             case 'SIGNED_IN':
-              console.log('🔄 [AuthContext] Processing SIGNED_IN event');
+              logger.log('🔄 [AuthContext] Processing SIGNED_IN event');
               handleAuthState(session, 'SIGNED_IN');
               break;
               
             case 'SIGNED_OUT':
-              console.log('🔄 [AuthContext] Processing SIGNED_OUT event');
+              logger.log('🔄 [AuthContext] Processing SIGNED_OUT event');
               handleSignOut();
               break;
               
@@ -95,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               break;
           }
         } catch (error) {
-          console.error(`❌ [AuthContext] Error processing ${event}:`, error);
+          logger.error(`❌ [AuthContext] Error processing ${event}:`, error);
           if (mounted) {
             setInitialized(true);
             setLoading(false);

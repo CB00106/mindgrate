@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import supabase from '@/services/supabaseClient';
+import { logger } from '@/utils/logger';
 // Importa las imágenes desde la carpeta de imágenes
 import heroImage from '../images/heroImage.png';
 import cerebroImage from '../images/cerebroImage.png';
@@ -126,15 +127,15 @@ const WaitlistModal: React.FC<WaitlistModalProps> = ({ isOpen, onClose }) => {
           return;
         }
         
-        console.error('Error de Supabase:', supabaseError);
+        logger.error('Error de Supabase:', supabaseError);
         throw new Error(supabaseError.message || 'Error al guardar en la base de datos');
       }
 
-      console.log('Correo registrado exitosamente:', data);
+      logger.log('Correo registrado exitosamente:', data);
       setIsSubmitted(true);
       
     } catch (err) {
-      console.error('Error al registrar correo:', err);
+      logger.error('Error al registrar correo:', err);
       if (err instanceof Error) {
         setError(err.message);
       } else {

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components';
 import { Menu, X } from 'lucide-react';
+import { logger } from '@/utils/logger';
 import logoImage from '@/images/imageq1_lay.png';
 
 const Header: React.FC = () => {
@@ -21,7 +22,7 @@ const Header: React.FC = () => {
       await signOut();
       setIsMenuOpen(false);
     } catch (error) {
-      console.error('Error signing out:', error);
+      logger.error('Error signing out:', error);
     }
   };  const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);

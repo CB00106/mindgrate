@@ -5,6 +5,7 @@ import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
+import { logger } from '@/utils/logger';
 import logoImage from '@/images/imageq1_lay.png';
 
 const Navbar: React.FC = () => {
@@ -20,7 +21,7 @@ const Navbar: React.FC = () => {
         const count = await notificationService.getPendingCount(userMindOpId);
         setNotificationCount(count);
       } catch (error) {
-        console.error('Error loading notification count:', error);
+        logger.error('Error loading notification count:', error);
       }
     };
 
@@ -38,7 +39,7 @@ const Navbar: React.FC = () => {
       await signOut();
       closeMobileMenu(); // Cierra el menú móvil después de cerrar sesión
     } catch (error) {
-      console.error('Error signing out:', error);
+      logger.error('Error signing out:', error);
     }
   };
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -105,7 +106,7 @@ const Navbar: React.FC = () => {
             </>
           ) : (
             <>
-              <a href="https://form.typeform.com/to/bZkqm16V" className="text-gray-600 hover:text-black font-medium transition-colors ml-4">Feedback</a>
+              <a href="https://form.typeform.com/to/d2VE1GL0" className="text-gray-600 hover:text-black font-medium transition-colors ml-4">Feedback</a>
               <Link to="/login" className="bg-[#2383e2] text-white font-bold py-2 px-4 rounded-[13px] hover:bg-[#1d6ab8] transition-colors ml-2">Iniciar Sesión</Link>
             </>
           )}
