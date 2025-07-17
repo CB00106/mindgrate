@@ -84,7 +84,7 @@ const Header: React.FC = () => {
                     Iniciar Sesión
                   </Button>
                 </Link>
-                <a href="https://form.typeform.com/to/bZkqm16V" target="_blank" rel="noopener noreferrer">
+                <a href="https://form.typeform.com/to/d2VE1GL0" target="_blank" rel="noopener noreferrer">
                   <Button variant="primary" size="sm" className="text-xs sm:text-sm px-3 sm:px-4">
                     Feedback
                   </Button>
