@@ -278,7 +278,7 @@ const Home = () => {
                 className="flex-1 bg-[#2383e2] text-white font-bold py-2 px-4 sm:px-6 md:py-2.5 md:px-8 rounded-[13px] hover:bg-[#1d6ab8] transition-all duration-300 transform hover:scale-105 shadow-lg text-center text-sm sm:text-base flex items-center justify-center">
                 Prueba el MVP y Ayúdanos
                 </a>
-              <a href="https://form.typeform.com/to/bZkqm16V" target="_blank" rel="noopener noreferrer"
+              <a href="https://form.typeform.com/to/d2VE1GL0" target="_blank" rel="noopener noreferrer"
                 className="flex-1 bg-[#ebf5fe] text-[#2383e2] font-bold py-2 px-4 sm:px-6 md:py-2.5 md:px-8 rounded-[13px] border-2 border-[#2383e2] hover:bg-[#d6ebfd] transition-all duration-300 transform hover:scale-105 text-center text-sm sm:text-base flex items-center justify-center">
                 Comparte tu Opinión
               </a>
