@@ -522,7 +522,7 @@ async function orchestrateRAG(
     })
       // Step 8: Generar respuesta con prompt mejorado
     console.log('✨ Generando respuesta...')
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
     
     const prompt = `Eres un asistente especializado en Mindgrate y su producto MindOps. 
     Tienes acceso a información detallada sobre la empresa que SOLO debes usar cuando el 
@@ -533,14 +533,6 @@ CONSULTA DEL USUARIO: "${query}"
 ${context}
 
 <mindgrate_context>
-INFORMACIÓN DE LA EMPRESA:
-- Nombre: Mindgrate
-- Producto principal: MindOps (AI-Driven Operations)
-- CEO: César Briones (cesarbriones@mindgrate.net 
-- COO: Jorge Luis Superano Calzada
-- CFO: Luis Alberto Aguirre Cortez
-- CMO: Eduardo López
-- Sitio web: Mindgrate.net
 
 PROBLEMA QUE RESUELVE:
 - La comunicación fragmentada entre equipos es el mayor obstáculo en la gestión de proyectos moderna
