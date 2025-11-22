@@ -44,21 +44,21 @@ const Navbar: React.FC = () => {
   };
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
-  
+
   const navLinks = [
     { path: '/chat', label: 'Chat' },
     { path: '/mindop', label: 'MindOp' },
     { path: '/search', label: 'Search' },
-    { path: '/notifications', label: 'Follow Request' },  ];
+    { path: '/notifications', label: 'Follow Request' },];
 
   return (
-    <nav className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm relative z-40">
+    <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-gray-200/50 px-6 py-4 shadow-sm transition-all duration-300">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-            <img 
-              src={logoImage} 
-              alt="Logo" 
+            <img
+              src={logoImage}
+              alt="Logo"
               className="h-10 w-auto object-contain"
             />
           </Link>
@@ -72,11 +72,10 @@ const Navbar: React.FC = () => {
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`text-sm font-medium transition-all duration-200 relative px-3 py-2 rounded-lg ${
-                      isActive(link.path)
+                    className={`text-sm font-medium transition-all duration-200 relative px-3 py-2 rounded-lg ${isActive(link.path)
                         ? 'text-black bg-gray-100'
                         : 'text-gray-600 hover:text-black hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {link.label}
                     {link.path === '/notifications' && notificationCount > 0 && (
@@ -156,9 +155,8 @@ const Navbar: React.FC = () => {
                     key={link.path}
                     to={link.path}
                     onClick={closeMobileMenu}
-                    className={`flex items-center justify-between py-3 px-4 rounded-lg transition-colors ${
-                      isActive(link.path) ? 'text-black bg-gray-100' : 'text-gray-600 hover:text-black hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center justify-between py-3 px-4 rounded-lg transition-colors ${isActive(link.path) ? 'text-black bg-gray-100' : 'text-gray-600 hover:text-black hover:bg-gray-50'
+                      }`}
                   >
                     <span>{link.label}</span>
                     {link.path === '/notifications' && notificationCount > 0 && (
