@@ -552,8 +552,9 @@ const Home = () => {
       </section>
 
       {/* --- WAITLIST CTA --- */}
-      < section className="py-24 px-4 md:px-8 lg:px-16 bg-black text-white text-center" >
-        <div className="max-w-4xl mx-auto space-y-8">
+      <section className="relative py-24 px-4 md:px-8 lg:px-16 bg-black text-white text-center overflow-hidden">
+        <KineticMesh color="#ffffff" />
+        <div className="max-w-4xl mx-auto space-y-8 relative z-10">
           <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
             ¿Te interesa la visión?
           </h2>
@@ -567,7 +568,7 @@ const Home = () => {
             Unirse a la Lista de Espera
           </button>
         </div>
-      </section >
+      </section>
 
       <WaitlistModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div >

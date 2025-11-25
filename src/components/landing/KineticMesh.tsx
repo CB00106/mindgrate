@@ -1,6 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 
-const KineticMesh: React.FC = () => {
+interface KineticMeshProps {
+    color?: string; // Optional color prop for customization
+}
+
+const KineticMesh: React.FC<KineticMeshProps> = ({ color = '#2383e2' }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -21,7 +25,7 @@ const KineticMesh: React.FC = () => {
 
         // Configuración Visual
         const CONFIG = {
-            color: '#2383e2', // Brand Blue
+            color: color, // Use prop color
             mouseRadius: 200,
             particleBaseSize: 2,
             spacing: 18, // Espaciado base para la espiral
@@ -177,7 +181,7 @@ const KineticMesh: React.FC = () => {
             canvas.removeEventListener('mouseleave', handleMouseLeave);
             cancelAnimationFrame(animationFrameId);
         };
-    }, []);
+    }, [color]);
 
     return (
         <canvas

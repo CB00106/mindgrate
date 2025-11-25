@@ -9,7 +9,7 @@ import logoImage from '@/images/icon.png';
 
 const Header: React.FC = () => {
   const location = useLocation();
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const isActive = (path: string) => {
@@ -29,23 +29,67 @@ const Header: React.FC = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setIsMenuOpen(false);
+  };
+
+  const handleDownloadResources = () => {
+    // Trigger PDF download
+    const link = document.createElement('a');
+    link.href = '/mindgrate-resources.pdf';
+    link.download = 'mindgrate-resources.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setIsMenuOpen(false);
+  };
+
   return (
     <header className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4">
-      <div className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-blue-100/20 rounded-full px-6 py-3 flex items-center justify-between max-w-5xl w-full transition-all duration-300">
-        {/* Logo */}
-        <Link
-          to="/"
-          className="flex items-center space-x-2 hover:opacity-80 transition-opacity flex-shrink-0 mr-8"
-        >
-          <img
-            src={logoImage}
-            alt="Mindgrate Logo"
-            className="h-8 w-auto object-contain"
-          />
-        </Link>
+      <div className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-blue-100/20 rounded-full px-6 py-3 flex items-center max-w-5xl w-full transition-all duration-300">
 
-        {/* Desktop Navigation & Actions Combined */}
-        <div className="hidden lg:flex items-center space-x-2 flex-1 justify-end">
+        {/* LEFT: Logo */}
+        <div className="flex items-center justify-start flex-1">
+          <Link
+            to="/"
+            className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
+          >
+            <img
+              src={logoImage}
+              alt="Mindgrate Logo"
+              className="h-8 w-auto object-contain"
+            />
+          </Link>
+        </div>
+
+        {/* CENTER: Navigation Links (Desktop Only) */}
+        <div className="hidden lg:flex items-center justify-center flex-1 space-x-8">
+          <button
+            onClick={() => scrollToSection('investigacion')}
+            className="text-sm font-medium text-gray-600 hover:text-black transition-colors whitespace-nowrap"
+          >
+            Visión
+          </button>
+          <button
+            onClick={() => scrollToSection('sia')}
+            className="text-sm font-medium text-gray-600 hover:text-black transition-colors whitespace-nowrap"
+          >
+            Descubre Arquitectura
+          </button>
+          <button
+            onClick={handleDownloadResources}
+            className="text-sm font-medium text-gray-600 hover:text-black transition-colors whitespace-nowrap"
+          >
+            Recursos
+          </button>
+        </div>
+
+        {/* RIGHT: Actions */}
+        <div className="hidden lg:flex items-center justify-end flex-1 space-x-3">
           {user && user.email ? (
             <>
               <Link to="/chat" className={`text-sm font-medium px-4 py-2 rounded-full transition-colors ${isActive('/chat') ? 'bg-gray-100 text-black' : 'text-gray-600 hover:text-black hover:bg-gray-50'}`}>
@@ -61,12 +105,12 @@ const Header: React.FC = () => {
             </>
           ) : (
             <>
-              <a href="https://form.typeform.com/to/d2VE1GL0" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-600 hover:text-black px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
-                Feedback
+              <a href="mailto:contacto@mindgrate.com" className="text-sm font-medium text-gray-600 hover:text-black px-4 py-2 rounded-full hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap">
+                Contacto
               </a>
               <Link to="/login">
-                <Button variant="primary" size="sm" className="rounded-full px-6 bg-[#2383e2] hover:bg-[#1d6ab8] text-white border-none shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">
-                  Iniciar Sesión
+                <Button variant="primary" size="sm" className="rounded-full px-6 bg-[#2383e2] hover:bg-[#1d6ab8] text-white border-none shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 whitespace-nowrap">
+                  Acceso Beta
                 </Button>
               </Link>
             </>
@@ -108,11 +152,21 @@ const Header: React.FC = () => {
               </>
             ) : (
               <>
-                <a href="https://form.typeform.com/to/d2VE1GL0" target="_blank" rel="noopener noreferrer" className="block px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-800 font-medium text-center">
-                  Feedback
+                <button onClick={() => scrollToSection('investigacion')} className="block w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-800 font-medium">
+                  Visión
+                </button>
+                <button onClick={() => scrollToSection('sia')} className="block w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-800 font-medium">
+                  Descubre Arquitectura
+                </button>
+                <button onClick={handleDownloadResources} className="block w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-800 font-medium">
+                  Recursos
+                </button>
+                <div className="h-px bg-gray-100 my-1"></div>
+                <a href="mailto:contacto@mindgrate.com" className="block px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-800 font-medium text-center">
+                  Contacto
                 </a>
                 <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 rounded-xl bg-[#2383e2] text-white font-bold text-center shadow-md">
-                  Iniciar Sesión
+                  Acceso Beta
                 </Link>
               </>
             )}
