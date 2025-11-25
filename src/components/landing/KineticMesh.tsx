@@ -1,180 +1,190 @@
 import React, { useEffect, useRef } from 'react';
 
-interface Particle {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    originX: number;
-    originY: number;
-    size: number;
-}
-
 const KineticMesh: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const particles = useRef<Particle[]>([]);
-    const mouse = useRef({ x: -1000, y: -1000 });
-    const animationFrameId = useRef<number>();
 
-    // Configuración visual
-    const PARTICLE_COUNT = 1000; // Cantidad de puntos
-    const CONNECTION_DISTANCE = 100; // Distancia para dibujar líneas
-    const MOUSE_RANGE = 300; // Radio de influencia del mouse
-    const ATTRACTION_FORCE = 0.05; // Fuerza de atracción al mouse
-    const RETURN_FORCE = 0.03; // Fuerza para volver a la posición original
-    const FRICTION = 0.90; // Suavizado de movimiento
-
-    // Inicializar partículas en forma de Hexágono Hueco (Anillo)
-    const initParticles = (width: number, height: number) => {
-        particles.current = [];
-        const centerX = width / 2;
-        const centerY = height / 2;
-
-        // Definir el tamaño del anillo/hexágono.
-        // Usamos la dimensión más pequeña de la pantalla para asegurar que quepa.
-        const minDimension = Math.min(width, height);
-
-        // Radio exterior: qué tan grande es la red.
-        const hexOuterRadius = minDimension * 0.70;
-        // Radio interior: el tamaño del "hueco" para el texto.
-        const hexInnerRadius = minDimension * 0.40;
-
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-            // Generar puntos usando coordenadas polares para crear un anillo
-            const theta = Math.random() * 2 * Math.PI; // Ángulo aleatorio alrededor del centro
-
-            // Radio aleatorio que cae ENTRE el radio interior y el exterior
-            // Esto es lo que crea el efecto de "hueco"
-            const r = hexInnerRadius + Math.random() * (hexOuterRadius - hexInnerRadius);
-
-            // Convertir polar a cartesiano (x, y)
-            const x = centerX + r * Math.cos(theta);
-            const y = centerY + r * Math.sin(theta);
-
-            particles.current.push({
-                x: x,
-                y: y,
-                originX: x, // Su "hogar" es esta posición en el anillo
-                originY: y,
-                vx: 0,
-                vy: 0,
-                size: Math.random() * 2 + 1,
-            });
-        }
-    };
-
-    const animate = () => {
+    useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
+
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let width: number;
+        let height: number;
+        let particles: Particle[] = [];
+        let animationFrameId: number;
+        let tick = 0;
 
-        // Color de los puntos y líneas (Mindgrate Blue con transparencia)
-        ctx.fillStyle = '#2383e2';
-        ctx.strokeStyle = 'rgba(35, 131, 226, 0.15)';
+        // Estado del mouse
+        const mouse = { x: -1000, y: -1000 };
 
-        particles.current.forEach((p, i) => {
-            // 1. Física de atracción al Mouse (Imán)
-            const dx = mouse.current.x - p.x;
-            const dy = mouse.current.y - p.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+        // Configuración Visual
+        const CONFIG = {
+            color: '#2383e2', // Brand Blue
+            mouseRadius: 200,
+            particleBaseSize: 2,
+            spacing: 18, // Espaciado base para la espiral
+            repulsionStrength: 15,
+            springTension: 0.05,
+            friction: 0.85,
+        };
 
-            if (distance < MOUSE_RANGE) {
-                // Cuanto más cerca, más fuerte la atracción
-                const force = (1 - distance / MOUSE_RANGE) * ATTRACTION_FORCE;
-                p.vx += dx * force;
-                p.vy += dy * force;
+        class Particle {
+            originX: number;
+            originY: number;
+            x: number;
+            y: number;
+            vx: number;
+            vy: number;
+            size: number;
+            pulseSpeed: number;
+            pulseOffset: number;
+
+            constructor(x: number, y: number) {
+                this.originX = x;
+                this.originY = y;
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                // Variación de tamaño para profundidad
+                this.size = Math.random() * CONFIG.particleBaseSize + 1;
+                // Configuración para efecto "Breathing"
+                this.pulseSpeed = 0.05 + Math.random() * 0.03;
+                this.pulseOffset = Math.random() * Math.PI * 2;
             }
 
-            // 2. Física de retorno a la posición original (El anillo hexagonal)
-            const homeDx = p.originX - p.x;
-            const homeDy = p.originY - p.y;
-            p.vx += homeDx * RETURN_FORCE;
-            p.vy += homeDy * RETURN_FORCE;
+            update() {
+                // 1. FÍSICA DEL MOUSE (Repulsión)
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
 
-            // 3. Aplicar fricción y actualizar posición
-            p.vx *= FRICTION;
-            p.vy *= FRICTION;
-            p.x += p.vx;
-            p.y += p.vy;
+                if (distance < CONFIG.mouseRadius) {
+                    const force = (CONFIG.mouseRadius - distance) / CONFIG.mouseRadius;
+                    const angle = Math.atan2(dy, dx);
+                    const pushX = Math.cos(angle) * force * CONFIG.repulsionStrength;
+                    const pushY = Math.sin(angle) * force * CONFIG.repulsionStrength;
 
-            // 4. Dibujar partícula
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fill();
+                    this.vx -= pushX;
+                    this.vy -= pushY;
+                }
 
-            // 5. Dibujar conexiones
-            for (let j = i + 1; j < particles.current.length; j++) {
-                const p2 = particles.current[j];
-                const dist = Math.sqrt((p.x - p2.x) ** 2 + (p.y - p2.y) ** 2);
+                // 2. FÍSICA DE MUELLE (Retorno a origen con movimiento orgánico)
+                // El origen oscila ligeramente para dar sensación de "flotación"
+                const driftX = Math.sin(tick * 0.01 + this.pulseOffset) * 5;
+                const driftY = Math.cos(tick * 0.01 + this.pulseOffset) * 5;
 
-                if (dist < CONNECTION_DISTANCE) {
-                    ctx.beginPath();
-                    // Líneas más transparentes cuanto más lejos están los puntos
-                    ctx.strokeStyle = `rgba(35, 131, 226, ${0.2 * (1 - dist / CONNECTION_DISTANCE)})`;
-                    ctx.lineWidth = 0.5;
-                    ctx.moveTo(p.x, p.y);
-                    ctx.lineTo(p2.x, p2.y);
-                    ctx.stroke();
+                const targetX = this.originX + driftX;
+                const targetY = this.originY + driftY;
+
+                const springX = targetX - this.x;
+                const springY = targetY - this.y;
+
+                this.vx += springX * CONFIG.springTension;
+                this.vy += springY * CONFIG.springTension;
+
+                // 3. FRICCIÓN
+                this.vx *= CONFIG.friction;
+                this.vy *= CONFIG.friction;
+
+                // Actualizar posición
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+
+            draw(context: CanvasRenderingContext2D) {
+                // Cálculo de Opacidad (Breathing) - BRILLO AUMENTADO
+                const alpha = 0.3 + Math.sin(tick * this.pulseSpeed + this.pulseOffset) * 0.5;
+
+                if (alpha <= 0) return;
+
+                context.beginPath();
+                context.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                context.fillStyle = CONFIG.color;
+                context.globalAlpha = alpha;
+                context.fill();
+                context.globalAlpha = 1;
+            }
+        }
+
+        const createParticles = () => {
+            particles = [];
+            const centerX = width / 2;
+            const centerY = height / 2;
+            // Cantidad de partículas relativa al ancho de pantalla
+            const count = Math.min(width * 0.8, 800);
+
+            for (let i = 0; i < count; i++) {
+                // ALGORITMO PHYLLOTAXIS (Espiral Áurea)
+                const angle = i * 137.5 * (Math.PI / 180);
+                const r = CONFIG.spacing * Math.sqrt(i);
+
+                const x = centerX + r * Math.cos(angle);
+                const y = centerY + r * Math.sin(angle);
+
+                // Solo agregar si está visible (con margen)
+                if (x > -50 && x < width + 50 && y > -50 && y < height + 50) {
+                    particles.push(new Particle(x, y));
                 }
             }
-        });
+        };
 
-        animationFrameId.current = requestAnimationFrame(animate);
-    };
-
-    useEffect(() => {
         const handleResize = () => {
-            if (containerRef.current && canvasRef.current) {
-                const { offsetWidth, offsetHeight } = containerRef.current;
-                canvasRef.current.width = offsetWidth;
-                canvasRef.current.height = offsetHeight;
-                initParticles(offsetWidth, offsetHeight);
+            if (canvas.parentElement) {
+                width = canvas.width = canvas.parentElement.offsetWidth;
+                height = canvas.height = canvas.parentElement.offsetHeight;
+                createParticles();
             }
         };
 
         const handleMouseMove = (e: MouseEvent) => {
-            if (canvasRef.current) {
-                const rect = canvasRef.current.getBoundingClientRect();
-                mouse.current = {
-                    x: e.clientX - rect.left,
-                    y: e.clientY - rect.top
-                };
-            }
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
         };
 
         const handleMouseLeave = () => {
-            mouse.current = { x: -1000, y: -1000 };
+            mouse.x = -1000;
+            mouse.y = -1000;
         };
 
-        window.addEventListener('resize', handleResize);
-        if (containerRef.current) {
-            containerRef.current.addEventListener('mousemove', handleMouseMove);
-            containerRef.current.addEventListener('mouseleave', handleMouseLeave);
-        }
+        const animate = () => {
+            ctx.clearRect(0, 0, width, height);
+            tick++;
 
-        handleResize(); // Init
+            particles.forEach((p) => {
+                p.update();
+                p.draw(ctx);
+            });
+
+            animationFrameId = requestAnimationFrame(animate);
+        };
+
+        // Inicialización
+        handleResize();
         animate();
+
+        // Event Listeners
+        window.addEventListener('resize', handleResize);
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mouseleave', handleMouseLeave);
 
         return () => {
             window.removeEventListener('resize', handleResize);
-            if (containerRef.current) {
-                containerRef.current.removeEventListener('mousemove', handleMouseMove);
-                containerRef.current.removeEventListener('mouseleave', handleMouseLeave);
-            }
-            if (animationFrameId.current) {
-                cancelAnimationFrame(animationFrameId.current);
-            }
+            canvas.removeEventListener('mousemove', handleMouseMove);
+            canvas.removeEventListener('mouseleave', handleMouseLeave);
+            cancelAnimationFrame(animationFrameId);
         };
     }, []);
 
     return (
-        <div ref={containerRef} className="absolute inset-0 z-0 overflow-hidden pointer-events-auto">
-            <canvas ref={canvasRef} className="w-full h-full" />
-        </div>
+        <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-auto z-0"
+            style={{ opacity: 1 }} // Ajuste sutil de opacidad general
+        />
     );
 };
 

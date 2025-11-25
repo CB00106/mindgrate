@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components';
 import { Menu, X } from 'lucide-react';
 import { logger } from '@/utils/logger';
-import logoImage from '@/images/imageq1_lay.png';
+import logoImage from '@/images/icon.png';
 
 const Header: React.FC = () => {
   const location = useLocation();
@@ -31,7 +31,7 @@ const Header: React.FC = () => {
 
   return (
     <header className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4">
-      <div className="bg-white/80 backdrop-blur-md border border-gray-200/50 shadow-lg rounded-full px-6 py-3 flex items-center justify-between max-w-5xl w-full transition-all duration-300">
+      <div className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-blue-100/20 rounded-full px-6 py-3 flex items-center justify-between max-w-5xl w-full transition-all duration-300">
         {/* Logo */}
         <Link
           to="/"

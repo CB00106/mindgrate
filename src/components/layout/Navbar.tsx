@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import { logger } from '@/utils/logger';
-import logoImage from '@/images/imageq1_lay.png';
+import logoImage from '@/images/icon.png';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
@@ -73,8 +73,8 @@ const Navbar: React.FC = () => {
                     key={link.path}
                     to={link.path}
                     className={`text-sm font-medium transition-all duration-200 relative px-3 py-2 rounded-lg ${isActive(link.path)
-                        ? 'text-black bg-gray-100'
-                        : 'text-gray-600 hover:text-black hover:bg-gray-50'
+                      ? 'text-black bg-gray-100'
+                      : 'text-gray-600 hover:text-black hover:bg-gray-50'
                       }`}
                   >
                     {link.label}

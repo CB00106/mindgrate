@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -11,7 +11,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -34,15 +35,80 @@ h1 {
   line-height: 1.1;
 }
 
-/* 
-DESACTIVADO: Modo oscuro automático del sistema
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #ffffff;
-    background-color: #000000;
+/* Animaciones del SVG para Bloque 3 (SIA) */
+@keyframes pulse-core {
+
+  0%,
+  100% {
+    r: 35;
+    opacity: 1;
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.6));
   }
-  a:hover {
-    color: #747bff;
+
+  50% {
+    r: 38;
+    opacity: 0.8;
+    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.9));
   }
 }
-*/
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes flow-line {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sia-core {
+  animation: pulse-core 3s infinite ease-in-out;
+}
+
+.sia-ring-outer {
+  transform-origin: center;
+  animation: spin-slow 60s linear infinite;
+}
+
+.sia-ring-inner {
+  transform-origin: center;
+  animation: spin-reverse 40s linear infinite;
+}
+
+.sia-connection {
+  stroke-dasharray: 5;
+  animation: flow-line 1s linear infinite;
+}
+
+.sia-label {
+  animation: fade-in-up 1s ease-out forwards;
+}
