@@ -174,9 +174,9 @@ const Home = () => {
 
         <div className="relative z-10 text-center px-4 max-w-5xl mx-auto space-y-8">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 1, y: 0 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0 }}
             className="flex flex-col items-center"
           >
             <img
@@ -184,15 +184,15 @@ const Home = () => {
               alt="Mindgrate"
               className="w-20 h-20 md:w-24 md:h-24 object-contain mb-3"
             />
-            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 tracking-tight leading-[1.1] mb-6">
+            <h1 className="text-5xl md:text-7xl font-extralight text-gray-900 tracking-tight leading-[1.1] mb-6">
               IA diseñada como un sistema, no como un parche.
             </h1>
           </motion.div>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 1, y: 0 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
+            transition={{ duration: 0 }}
             className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed"
           >
             Diseñamos la arquitectura que une estrategia, datos y automatización en un solo flujo inteligente.
@@ -214,149 +214,164 @@ const Home = () => {
         </div>
       </section >
 
-      {/* --- BLOQUE 2: LA TRAMPA ARQUITECTÓNICA (STICKY LAYOUT) --- */}
-      <section id="investigacion" className="relative max-w-7xl mx-auto py-24 px-4 md:px-8 lg:px-16 z-10">
+      {/* --- BLOQUE 2: LA TRAMPA ARQUITECTÓNICA (ACORDEÓN HORIZONTAL) --- */}
+      <section id="investigacion" className="relative w-full py-24 px-4 md:px-8 lg:px-16 z-10 overflow-hidden">
+
+        {/* BACKGROUND AMBIENTAL ANIMADO */}
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-blue-100/30 rounded-full blur-[120px] animate-pulse"></div>
+          <div className="absolute bottom-[10%] right-[-10%] w-[40vw] h-[40vw] bg-indigo-50/40 rounded-full blur-[100px]" style={{ animation: 'pulse 12s ease-in-out infinite' }}></div>
+          {/* Grid Pattern Sutil */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(#0f172a 1px, transparent 1px), linear-gradient(to right, #0f172a 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+        </div>
 
         {/* Gradient Background Subtle */}
         <div className="absolute inset-0 bg-gradient-to-b from-white via-slate-50/30 to-white pointer-events-none"></div>
 
-        <div className="flex flex-col lg:flex-row gap-16 relative">
+        <div className="max-w-7xl mx-auto relative z-10">
 
-          {/* COLUMNA IZQUIERDA: STICKY (La Tesis) */}
-          <div className="lg:w-1/3">
-            <div className="sticky top-24 h-fit">
-
-              {/* Decorative line */}
-              <div className="w-12 h-1 bg-gradient-to-r from-[#2383e2] to-blue-300 mb-8 rounded-full"></div>
-
-              <h2 className="text-4xl md:text-5xl font-extrabold mb-6 leading-tight text-slate-900">
-                La Trampa <br /> <span className="text-[#2383e2]">Arquitectónica</span>
-              </h2>
-
-              <p className="text-lg text-slate-600 mb-8 leading-relaxed">
-                No es un problema de "motores" (IA), es un problema de "fábricas" (Estructura).
-                <br /><br />
-                Vivimos una repetición histórica de la <strong>"Paradoja del Dínamo"</strong> (1920). Introducir tecnología dinámica en flujos estáticos no genera productividad, solo acelera el caos.
-              </p>
-
-              <div className="flex flex-col gap-4 text-sm text-slate-500 font-medium border-l-2 border-[#2383e2]/20 pl-4">
-                <span className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-[#2383e2]" /> Ref: Paul David (Stanford, 1990)</span>
-                <span className="flex items-center gap-2"><TrendingDown className="w-4 h-4 text-[#2383e2]" /> Curva J de Productividad</span>
-              </div>
-            </div>
+          {/* HEADER */}
+          <div className="mb-12 text-center">
+            <div className="w-12 h-1 bg-gradient-to-r from-[#2383e2] to-blue-300 mx-auto mb-6 rounded-full"></div>
+            <h2 className="text-4xl md:text-6xl font-extralight mb-4 text-slate-900">
+              La Trampa <span className="text-[#2383e2]">Arquitectónica</span>
+            </h2>
+            <p className="text-lg text-slate-600 max-w-3xl mx-auto">
+              El 91% falla en la ejecución. No es un problema de potencia, es un problema de estructura.
+            </p>
           </div>
 
-          {/* COLUMNA DERECHA: SCROLL (La Evidencia) */}
-          <div className="lg:w-2/3 space-y-24 pb-24">
+          {/* ACORDEÓN HORIZONTAL */}
+          <div className="flex flex-col lg:flex-row gap-4 min-h-[600px] lg:min-h-[500px]">
 
-            {/* CARD 1: SÍNTOMAS (Datos Duros) */}
-            <div className="group">
-              <div className="relative bg-white/60 backdrop-blur-sm rounded-3xl p-10 border border-slate-200/60 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-100/20 hover:border-[#2383e2]/30 hover:bg-white overflow-hidden">
+            {/* CARD 1: SÍNTOMAS */}
+            <div className="group flex-1 lg:hover:flex-[3] transition-all duration-700 ease-out">
+              <div className="relative h-full bg-white/60 backdrop-blur-sm rounded-3xl p-8 border border-slate-200/60 transition-all duration-500 group-hover:shadow-2xl group-hover:shadow-blue-100/20 group-hover:border-[#2383e2]/30 group-hover:bg-white overflow-hidden">
 
                 {/* Decorative corner gradient */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-bl-full"></div>
 
                 {/* Badge */}
-                <div className="absolute top-6 right-6 px-3 py-1 bg-blue-50/80 backdrop-blur-sm text-[#2383e2] text-xs font-bold uppercase rounded-full border border-blue-100">
+                <div className="absolute top-4 right-4 px-3 py-1 bg-blue-50/80 backdrop-blur-sm text-[#2383e2] text-xs font-bold uppercase rounded-full border border-blue-100">
                   Síntomas
                 </div>
 
-                <div className="mb-6 p-3 bg-gradient-to-br from-blue-50 to-blue-100/50 text-[#2383e2] rounded-2xl w-fit"><AlertTriangle className="w-8 h-8" /></div>
+                <div className="mb-4 p-3 bg-gradient-to-br from-blue-50 to-blue-100/50 text-[#2383e2] rounded-2xl w-fit">
+                  <AlertTriangle className="w-6 h-6 lg:w-8 lg:h-8" />
+                </div>
 
-                <h3 className="text-2xl font-extrabold mb-2 text-slate-900">Síntomas de Deuda Arquitectónica</h3>
-                <p className="text-sm font-mono text-slate-400 mb-8 uppercase tracking-wider">"El costo de no escalar"</p>
+                <h3 className="text-xl lg:text-2xl font-extralight mb-2 text-slate-900">Síntomas de Deuda Arquitectónica</h3>
+                <p className="text-xs font-mono text-slate-400 mb-4 uppercase tracking-wider">"El costo de no escalar"</p>
 
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <div className="text-6xl font-black text-slate-900 tracking-tighter">90<span className="text-[#2383e2]">%</span></div>
-                    <p className="font-bold text-slate-800">Inversión sin Retorno</p>
-                    <p className="text-sm text-slate-600 leading-relaxed">De las empresas aumentan su presupuesto de IA, pero reportan que el ROI sigue siendo "esquivo" debido a la falta de cambios estructurales.</p>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="text-6xl font-black text-slate-900 tracking-tighter">80<span className="text-[#2383e2]">%</span></div>
-                    <p className="font-bold text-slate-800">Fallo en Producción</p>
-                    <p className="text-sm text-slate-600 leading-relaxed">De los proyectos mueren antes de salir. Los "Silos de Datos" impiden que la IA tenga el contexto necesario para inferir correctamente.</p>
+                {/* Contenido expandido - solo visible en hover */}
+                <div className="opacity-0 max-h-0 lg:group-hover:opacity-100 lg:group-hover:max-h-[500px] transition-all duration-700 overflow-hidden">
+                  <div className="grid md:grid-cols-2 gap-6 pt-4">
+                    <div className="space-y-2">
+                      <div className="text-5xl lg:text-6xl font-black text-slate-900 tracking-tighter">90<span className="text-[#2383e2]">%</span></div>
+                      <p className="font-bold text-slate-800 text-sm">Inversión sin Retorno</p>
+                      <p className="text-xs text-slate-600 leading-relaxed">De las empresas aumentan su presupuesto de IA, pero reportan que el ROI sigue siendo "esquivo".</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-5xl lg:text-6xl font-black text-slate-900 tracking-tighter">80<span className="text-[#2383e2]">%</span></div>
+                      <p className="font-bold text-slate-800 text-sm">Fallo en Producción</p>
+                      <p className="text-xs text-slate-600 leading-relaxed">De los proyectos mueren antes de salir. Los "Silos de Datos" impiden el contexto necesario.</p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-
-            {/* CARD 2: EL ENFOQUE TRADICIONAL (El Error) */}
-            <div className="group">
-              <div className="relative bg-white rounded-3xl p-10 border border-slate-200/60 shadow-sm transition-all duration-500 hover:shadow-2xl hover:shadow-slate-200/50 hover:-translate-y-1 overflow-hidden">
+            {/* CARD 2: EL ERROR */}
+            <div className="group flex-1 lg:hover:flex-[3] transition-all duration-700 ease-out">
+              <div className="relative h-full bg-white rounded-3xl p-8 border border-slate-200/60 shadow-sm transition-all duration-500 group-hover:shadow-2xl group-hover:shadow-slate-200/50 overflow-hidden">
 
                 {/* Subtle pattern overlay */}
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(148, 163, 184, 0.05) 1px, transparent 0)', backgroundSize: '32px 32px' }}></div>
 
                 {/* Badge */}
-                <div className="absolute top-6 right-6 px-3 py-1 bg-slate-100 text-slate-500 text-xs font-bold uppercase rounded-full border border-slate-200">
+                <div className="absolute top-4 right-4 px-3 py-1 bg-slate-100 text-slate-500 text-xs font-bold uppercase rounded-full border border-slate-200">
                   Innovación de Componentes
                 </div>
 
-                <div className="mb-6 p-3 bg-slate-100 text-slate-500 rounded-2xl w-fit relative z-10"><Layers className="w-8 h-8" /></div>
+                <div className="mb-4 p-3 bg-slate-100 text-slate-500 rounded-2xl w-fit relative z-10">
+                  <Layers className="w-6 h-6 lg:w-8 lg:h-8" />
+                </div>
 
-                <h3 className="text-2xl font-extrabold mb-2 text-slate-900 relative z-10">El Error: Superponer Tecnología</h3>
-                <p className="text-sm font-mono text-slate-400 mb-6 uppercase tracking-wider relative z-10">"Poner un motor nuevo en una estructura vieja"</p>
+                <h3 className="text-xl lg:text-2xl font-extralight mb-2 text-slate-900 relative z-10">El Error: Superponer Tecnología</h3>
+                <p className="text-xs font-mono text-slate-400 mb-4 uppercase tracking-wider relative z-10">"Motor nuevo, estructura vieja"</p>
 
-                <p className="text-slate-600 mb-6 leading-relaxed relative z-10">
-                  Intentar insertar IA en departamentos estancos (Marketing, RRHH) sin cambiar cómo se conectan. Es como electrificar una fábrica de vapor sin quitar las poleas.
-                </p>
+                {/* Contenido expandido - solo visible en hover */}
+                <div className="opacity-0 max-h-0 lg:group-hover:opacity-100 lg:group-hover:max-h-[500px] transition-all duration-700 overflow-hidden">
+                  <p className="text-slate-600 mb-4 leading-relaxed relative z-10 text-sm">
+                    Insertar IA en departamentos aislados es como <strong className="text-slate-900 bg-slate-100 px-1 rounded">electrificar una máquina de vapor</strong> sin quitar las poleas.
+                  </p>
 
-                <ul className="space-y-3 relative z-10">
-                  <li className="flex items-start gap-3 text-sm text-slate-600">
-                    <X className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
-                    "Shadow AI" (Uso no regulado por fricción)
-                  </li>
-                  <li className="flex items-start gap-3 text-sm text-slate-600">
-                    <X className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
-                    Alucinaciones por falta de contexto unificado
-                  </li>
-                  <li className="flex items-start gap-3 text-sm text-slate-600">
-                    <X className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
-                    Ley de Conway (El software copia la burocracia)
-                  </li>
-                </ul>
+                  <ul className="space-y-2 relative z-10">
+                    <li className="flex items-start gap-2 text-xs text-slate-600">
+                      <X className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      "Shadow AI" Descontrolado
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-slate-600">
+                      <X className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      Alucinaciones por falta de contexto
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-slate-600">
+                      <X className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      Ley de Conway (El software copia la burocracia)
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 
-            {/* CARD 3: EL ENFOQUE MINDGRATE (La Solución) */}
-            <div className="group">
-              <div className="relative bg-slate-900 text-white rounded-3xl p-10 border border-slate-800/50 shadow-2xl transition-all duration-500 hover:shadow-blue-900/20 hover:shadow-2xl hover:border-[#2383e2]/30 overflow-hidden">
+            {/* CARD 3: LA SOLUCIÓN */}
+            <div className="group flex-1 lg:hover:flex-[3] transition-all duration-700 ease-out">
+              <div className="relative h-full bg-black text-white rounded-3xl p-8 border border-slate-800/50 shadow-2xl transition-all duration-500 group-hover:shadow-white/10 group-hover:border-white/20 overflow-hidden">
 
                 {/* Animated gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#2383e2]/10 via-transparent to-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
-                {/* Dot pattern */}
-                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#2383e2 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+                {/* Dot pattern - PUNTOS BLANCOS */}
+                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(white 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
                 {/* Badge */}
-                <div className="absolute top-6 right-6 px-3 py-1 bg-[#2383e2]/20 text-blue-300 border border-[#2383e2]/40 text-xs font-bold uppercase rounded-full backdrop-blur-sm">
+                <div className="absolute top-4 right-4 px-3 py-1 bg-[#2383e2]/20 text-blue-300 border border-[#2383e2]/40 text-xs font-bold uppercase rounded-full backdrop-blur-sm">
                   Innovación Arquitectónica
                 </div>
 
-                <div className="mb-6 p-3 bg-gradient-to-br from-[#2383e2] to-blue-600 text-white rounded-2xl w-fit relative z-10 shadow-lg shadow-blue-500/20"><LayoutTemplate className="w-8 h-8" /></div>
+                <div className="mb-4 p-3 bg-gradient-to-br from-[#2383e2] to-blue-600 text-white rounded-2xl w-fit relative z-10 shadow-lg shadow-blue-500/20">
+                  <LayoutTemplate className="w-6 h-6 lg:w-8 lg:h-8" />
+                </div>
 
-                <h3 className="text-2xl font-extrabold mb-2 relative z-10">La Solución: Rediseño de Flujo</h3>
-                <p className="text-sm font-mono text-blue-400 mb-6 uppercase tracking-wider relative z-10">"Construir la nueva infraestructura"</p>
+                <h3 className="text-xl lg:text-2xl font-extralight mb-2 relative z-10">La Solución: Rediseño de Flujo</h3>
+                <p className="text-xs font-mono text-blue-400 mb-4 uppercase tracking-wider relative z-10">"Construir la nueva infraestructura"</p>
 
-                <p className="text-slate-300 mb-6 leading-relaxed relative z-10">
-                  Mindgrate disuelve los silos permitiendo que la inteligencia fluya transversalmente. No aceleramos procesos viejos; creamos una nueva topología de trabajo.
-                </p>
-
-                <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 relative z-10">
-                  <div className="flex items-center gap-4 mb-2">
-                    <CheckCircle2 className="w-6 h-6 text-green-400" />
-                    <span className="font-bold">Coherencia Sistémica</span>
-                  </div>
-                  <p className="text-sm text-slate-400 pl-10">
-                    Alineación matemática entre la intención estratégica y la ejecución diaria.
+                {/* Contenido expandido - solo visible en hover */}
+                <div className="opacity-0 max-h-0 lg:group-hover:opacity-100 lg:group-hover:max-h-[500px] transition-all duration-700 overflow-hidden">
+                  <p className="text-slate-300 mb-4 leading-relaxed relative z-10 text-sm">
+                    Mindgrate disuelve los silos permitiendo que la inteligencia fluya transversalmente. Creamos una <strong className="text-white">nueva topología de trabajo</strong>.
                   </p>
+
+                  <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 relative z-10">
+                    <div className="flex items-center gap-3 mb-1">
+                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                      <span className="font-bold text-sm">Coherencia Sistémica</span>
+                    </div>
+                    <p className="text-xs text-slate-400 pl-8">
+                      Alineación matemática entre estrategia y ejecución.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
           </div>
+
+          {/* Hint de interacción */}
+          <div className="mt-8 text-center">
+            <p className="text-sm text-slate-400 italic">Pasa el cursor sobre cada card para explorar más detalles</p>
+          </div>
+
         </div>
 
       </section>
@@ -375,7 +390,7 @@ const Home = () => {
           {/* HEADER DEL BLOQUE */}
           <div className="text-center mb-20">
             <span className="text-[#2383e2] font-bold tracking-wider uppercase text-sm mb-2 block">La Nueva Infraestructura</span>
-            <h2 className="text-4xl md:text-5xl font-extrabold mb-6 text-gray-900">
+            <h2 className="text-4xl md:text-5xl font-extralight mb-6 text-gray-900">
               Mindgrate <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2383e2] to-blue-400">SIA</span>
             </h2>
             <p className="text-slate-600 max-w-2xl mx-auto text-lg">
@@ -460,7 +475,7 @@ const Home = () => {
                 </svg>
 
                 {/* Etiquetas Flotantes */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded border border-slate-300 backdrop-blur-sm">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 bg-green-50 text-green-700 text-xs px-2 py-1 rounded border border-green-300 backdrop-blur-sm">
                   Viabilidad
                 </div>
               </div>
@@ -477,7 +492,7 @@ const Home = () => {
                     <BrainCircuit className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">Dynamic Project Core (DPC)</h3>
+                    <h3 className="text-xl font-extralight text-gray-900 mb-1">Dynamic Project Core (DPC)</h3>
                     <p className="text-xs font-bold text-[#2383e2] uppercase tracking-widest mb-2">El Núcleo Cognitivo</p>
                     <p className="text-slate-600 text-sm leading-relaxed">
                       Traduce la intención estratégica en parámetros operativos en tiempo real. Es la "fuente única de verdad" que simula viabilidad antes de ejecutar.
@@ -494,7 +509,7 @@ const Home = () => {
                     <Network className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">MindOps + SIAF</h3>
+                    <h3 className="text-xl font-extralight text-gray-900 mb-1">MindOps + SIAF</h3>
                     <p className="text-xs font-bold text-[#2383e2] uppercase tracking-widest mb-2">La Red Operativa</p>
                     <p className="text-slate-600 text-sm leading-relaxed">
                       Agentes autónomos (Finanzas, Legal, Talento) que ejecutan la táctica. Guiados por el <strong>marco educativo SIAF</strong>, enseñan a la organización a operar en red.
@@ -511,7 +526,7 @@ const Home = () => {
                     <ShieldCheck className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">Governance Core</h3>
+                    <h3 className="text-xl font-extralight text-gray-900 mb-1">Governance Core</h3>
                     <p className="text-xs font-bold text-[#2383e2] uppercase tracking-widest mb-2">Coste Material & Regeneración</p>
                     <p className="text-slate-600 text-sm leading-relaxed">
                       SIA integra este principio en su núcleo: cada simulación del DPC incluye el <strong>"coste material"</strong> de la estrategia.
@@ -527,37 +542,19 @@ const Home = () => {
         </div>
       </section>
 
-      {/* --- ROADMAP SECTION --- */}
-      < section className="py-24 px-4 md:px-8 lg:px-16 bg-white" >
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6">Nuestra Hoja de Ruta</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Hacia la Transformación Operativa.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Optimización Estratégica</h3>
-              <p className="text-gray-600">Alinea recursos, presupuesto y tiempo de forma inteligente. Analiza la viabilidad de nuevos proyectos automáticamente.</p>
-            </div>
-            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Detección de Riesgos</h3>
-              <p className="text-gray-600">Anticípate a los problemas antes de que se conviertan en crisis, notificando a los agentes y personas clave.</p>
-            </div>
-            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Capitalización del Conocimiento</h3>
-              <p className="text-gray-600">Convierte la experiencia de tu equipo en un activo reutilizable. Captura aprendizajes al instante.</p>
-            </div>
-          </div>
+      {/* --- BLOQUE 4: MINDGRATE --- */}
+      <section className="relative py-32 md:py-48 px-4 bg-white overflow-hidden">
+        <div className="max-w-full mx-auto flex items-center justify-center min-h-[60vh]">
+          <h2 className="text-[15vw] md:text-[20vw] lg:text-[25vw] font-extralight text-slate-900 tracking-tighter leading-none select-none">
+            mindgrate
+          </h2>
         </div>
-      </section >
+      </section>
 
       {/* --- WAITLIST CTA --- */}
       < section className="py-24 px-4 md:px-8 lg:px-16 bg-black text-white text-center" >
         <div className="max-w-4xl mx-auto space-y-8">
-          <h2 className="text-4xl md:text-5xl font-bold leading-tight">
+          <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
             ¿Te interesa la visión?
           </h2>
           <p className="text-xl text-gray-300">
