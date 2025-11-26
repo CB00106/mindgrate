@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, AlertTriangle, Layers, LayoutTemplate, BookOpen, TrendingDown, X, CheckCircle2, BrainCircuit, Network, ShieldCheck } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Layers, LayoutTemplate, X, CheckCircle2, BrainCircuit, Network, ShieldCheck, Target, Cpu, Zap, FileText } from 'lucide-react';
 import KineticMesh from '@/components/landing/KineticMesh';
 import supabase from '@/services/supabaseClient';
 import { logger } from '@/utils/logger';
 import heroImage from '@/images/imageq1_lay.png';
+import heroImage2 from '@/images/icon.png';
 
 interface WaitlistModalProps {
   isOpen: boolean;
@@ -164,12 +165,13 @@ const WaitlistModal: React.FC<WaitlistModalProps> = ({ isOpen, onClose }) => {
 
 const Home = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedLayer, setSelectedLayer] = useState('layer-3');
 
   return (
     <div className="bg-white font-sans w-full min-h-screen flex flex-col">
 
       {/* --- HERO SECTION --- */}
-      <section className="relative w-full min-h-screen flex flex-col items-center justify-center overflow-hidden pt-15">
+      <section className="relative w-full min-h-screen flex flex-col items-center justify-center overflow-hidden pt-15 bg-white">
         <KineticMesh />
 
         <div className="relative z-10 text-center px-4 max-w-5xl mx-auto space-y-8">
@@ -215,10 +217,10 @@ const Home = () => {
       </section >
 
       {/* --- BLOQUE 2: LA TRAMPA ARQUITECTÓNICA (ACORDEÓN HORIZONTAL) --- */}
-      <section id="investigacion" className="relative w-full py-24 px-4 md:px-8 lg:px-16 z-10 overflow-hidden">
+      <section id="investigacion" className="relative w-full py-24 px-4 md:px-8 lg:px-16 z-10 overflow-hidden bg-white">
 
         {/* BACKGROUND AMBIENTAL ANIMADO */}
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-blue-100/30 rounded-full blur-[120px] animate-pulse"></div>
           <div className="absolute bottom-[10%] right-[-10%] w-[40vw] h-[40vw] bg-indigo-50/40 rounded-full blur-[100px]" style={{ animation: 'pulse 12s ease-in-out infinite' }}></div>
           {/* Grid Pattern Sutil */}
@@ -226,7 +228,7 @@ const Home = () => {
         </div>
 
         {/* Gradient Background Subtle */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-slate-50/30 to-white pointer-events-none"></div>
+        <div className="absolute inset-0 bg-white pointer-events-none"></div>
 
         <div className="max-w-7xl mx-auto relative z-10">
 
@@ -237,7 +239,7 @@ const Home = () => {
               La Trampa <span className="text-[#2383e2]">Arquitectónica</span>
             </h2>
             <p className="text-lg text-slate-600 max-w-3xl mx-auto">
-              El 91% falla en la ejecución. No es un problema de potencia, es un problema de estructura.
+              El 90% falla en la ejecución. No es un problema de potencia, es un problema de estructura.
             </p>
           </div>
 
@@ -369,7 +371,7 @@ const Home = () => {
 
           {/* Hint de interacción */}
           <div className="mt-8 text-center">
-            <p className="text-sm text-slate-400 italic">Pasa el cursor sobre cada card para explorar más detalles</p>
+
           </div>
 
         </div>
@@ -542,6 +544,140 @@ const Home = () => {
         </div>
       </section>
 
+      {/* --- BLOQUE 5: ARQUITECTURA DE MATERIALIDAD --- */}
+      <section id="layers" className="relative py-24 px-6 lg:px-12 bg-white overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+
+          {/* Header Simple */}
+          <div className="text-center mb-16">
+            <span className="text-xs font-bold tracking-widest text-[#2383e2] uppercase mb-2 block">Ontología del Sistema</span>
+            <h2 className="text-4xl md:text-5xl font-extralight text-slate-900">
+              Arquitectura de Materialidad
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+
+            {/* COLUMNA IZQUIERDA: DIAGRAMA (5 cols) */}
+            <div className="lg:col-span-5 flex justify-center relative lg:sticky lg:top-32">
+              {/* Fondo sutil */}
+              <div className="absolute inset-0 bg-white rounded-full opacity-50 blur-3xl transform scale-150"></div>
+
+              <svg viewBox="0 0 300 500" className="w-full max-w-[320px] h-auto drop-shadow-lg relative z-10">
+
+                {/* LINEA CONECTORA (La columna vertebral) */}
+                <line x1="150" y1="60" x2="150" y2="440" stroke="#cbd5e1" strokeWidth="2" strokeDasharray="4 4" />
+
+                {/* SEÑALES ANIMADAS (El flujo de información) */}
+                <circle cx="150" cy="60" r="6" className="signal-dot-down" />
+                <circle cx="150" cy="60" r="6" className="signal-dot-up" />
+
+                {/* CAPA 3: ESTRATÉGICA */}
+                <g className={`svg-layer ${selectedLayer !== 'layer-3' ? 'inactive' : ''}`} onClick={() => setSelectedLayer('layer-3')} style={{ cursor: 'pointer' }}>
+                  <line x1="150" y1="100" x2="90" y2="100" stroke="#94a3b8" strokeWidth="2" />
+                  <rect x="20" y="70" width="140" height="60" rx="12" fill="white" stroke={selectedLayer === 'layer-3' ? '#2383e2' : '#e2e8f0'} strokeWidth={selectedLayer === 'layer-3' ? '2' : '1'} />
+                  <text x="90" y="105" fontFamily="Inter" fontSize="12" fontWeight="bold" fill="#1e293b" textAnchor="middle">ESTRATEGIA</text>
+                  <text x="90" y="120" fontFamily="Inter" fontSize="9" fill="#64748b" textAnchor="middle">Intención</text>
+                  <circle cx="150" cy="100" r="4" fill="#2383e2" className="connection-point" />
+                </g>
+
+                {/* CAPA 2: OPERATIVA */}
+                <g className={`svg-layer ${selectedLayer !== 'layer-2' ? 'inactive' : ''}`} onClick={() => setSelectedLayer('layer-2')} style={{ cursor: 'pointer' }}>
+                  <line x1="150" y1="250" x2="210" y2="250" stroke="#94a3b8" strokeWidth="2" />
+                  <rect x="140" y="220" width="140" height="60" rx="12" fill="white" stroke={selectedLayer === 'layer-2' ? '#2383e2' : '#e2e8f0'} strokeWidth={selectedLayer === 'layer-2' ? '2' : '1'} />
+                  <text x="210" y="255" fontFamily="Inter" fontSize="12" fontWeight="bold" fill="#1e293b" textAnchor="middle">OPERATIVA</text>
+                  <text x="210" y="270" fontFamily="Inter" fontSize="9" fill="#64748b" textAnchor="middle">Estructura</text>
+                  <circle cx="150" cy="250" r="4" fill="#2383e2" className="connection-point" style={{ animationDelay: '0.5s' }} />
+                </g>
+
+                {/* CAPA 1: TÁCTICA */}
+                <g className={`svg-layer ${selectedLayer !== 'layer-1' ? 'inactive' : ''}`} onClick={() => setSelectedLayer('layer-1')} style={{ cursor: 'pointer' }}>
+                  <line x1="150" y1="400" x2="90" y2="400" stroke="#94a3b8" strokeWidth="2" />
+                  <rect x="20" y="370" width="140" height="60" rx="12" fill="white" stroke={selectedLayer === 'layer-1' ? '#2383e2' : '#e2e8f0'} strokeWidth={selectedLayer === 'layer-1' ? '2' : '1'} />
+                  <text x="90" y="405" fontFamily="Inter" fontSize="12" fontWeight="bold" fill="#1e293b" textAnchor="middle">TÁCTICA</text>
+                  <text x="90" y="420" fontFamily="Inter" fontSize="9" fill="#64748b" textAnchor="middle">Trabajo</text>
+                  <circle cx="150" cy="400" r="4" fill="#2383e2" className="connection-point" style={{ animationDelay: '1s' }} />
+                </g>
+
+              </svg>
+            </div>
+
+            {/* COLUMNA DERECHA: EXPLICACIÓN (7 cols) */}
+            <div className="lg:col-span-7 space-y-8">
+
+              {/* Card 3: Estratégica */}
+              <div
+                id="layer-3"
+                className={`layer-card p-8 rounded-2xl cursor-pointer group ${selectedLayer === 'layer-3' ? 'active' : ''}`}
+                onMouseEnter={() => setSelectedLayer('layer-3')}
+              >
+                <div className="flex gap-5">
+                  <div className="mt-1 p-2 bg-blue-50 rounded-lg text-[#2383e2] group-hover:scale-110 transition-transform h-fit">
+                    <Target className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-extralight text-slate-900 mb-2">Capa Estratégica: Materialidad de la Intención</h3>
+                    <p className="text-slate-600 text-base leading-relaxed">
+                      Donde reside el propósito y los horizontes. El liderazgo humano define la dirección y los criterios de <strong>viabilidad material</strong> que el sistema debe respetar. Es la fuente de la voluntad del sistema.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Operativa + SIAF */}
+              <div
+                id="layer-2"
+                className={`layer-card p-8 rounded-2xl cursor-pointer group ${selectedLayer === 'layer-2' ? 'active' : ''}`}
+                onMouseEnter={() => setSelectedLayer('layer-2')}
+              >
+                <div className="flex gap-5">
+                  <div className="mt-1 p-2 bg-slate-100 rounded-lg text-slate-500 group-hover:bg-blue-50 group-hover:text-[#2383e2] transition-colors h-fit">
+                    <Cpu className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-extralight text-slate-900 mb-2">Capa Operativa: Materialidad de la Estructura</h3>
+                    <p className="text-slate-600 text-base leading-relaxed mb-4">
+                      El dominio de las reglas y la coherencia. Aquí, la gobernanza por intención traduce el propósito abstracto en protocolos de acción interoperables para todo el sistema.
+                    </p>
+
+                    {/* Sub-bloque SIAF */}
+                    <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4 text-[#2383e2]" />
+                        <span className="text-sm font-bold text-[#2383e2] uppercase tracking-wide">SIAF: Gramática Operativa</span>
+                      </div>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        El marco que estructura la realidad operativa. Establece los flujos, roles y lenguajes comunes para que la inteligencia humana y artificial operen sin fricción y con total coherencia.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 1: Táctica */}
+              <div
+                id="layer-1"
+                className={`layer-card p-8 rounded-2xl cursor-pointer group ${selectedLayer === 'layer-1' ? 'active' : ''}`}
+                onMouseEnter={() => setSelectedLayer('layer-1')}
+              >
+                <div className="flex gap-5">
+                  <div className="mt-1 p-2 bg-slate-100 rounded-lg text-slate-500 group-hover:bg-blue-50 group-hover:text-[#2383e2] transition-colors h-fit">
+                    <Zap className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-extralight text-slate-900 mb-2">Capa Táctica: Materialidad del Trabajo</h3>
+                    <p className="text-slate-600 text-base leading-relaxed">
+                      El plano de la fricción y la realidad viva. El <strong>DPC</strong> centraliza la ejecución, gestiona recursos y extrae datos reales para informar a las capas superiores, asegurando que la estrategia tenga tracción en el mundo físico.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </section>
       {/* --- BLOQUE 4: MINDGRATE --- */}
       <section className="relative py-32 md:py-48 px-4 bg-white overflow-hidden">
         <div className="max-w-full mx-auto flex items-center justify-center min-h-[60vh]">
@@ -556,10 +692,12 @@ const Home = () => {
         <KineticMesh color="#ffffff" />
         <div className="max-w-4xl mx-auto space-y-8 relative z-10">
           <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
-            ¿Te interesa la visión?
+            ¿Quieres profundizar o necesitas claridad adicional?
           </h2>
           <p className="text-xl text-gray-300">
-            Si nuestra visión para transformar la gestión de proyectos te inspira, déjanos tu correo. Serás el primero en saber cuándo lancemos nuestra primera versión comercial.
+            Mindgrate trabaja con conceptos que trascienden el software tradicional.
+            Si quieres explorar la arquitectura completa en detalle o tienes dudas sobre
+            Cómo se aplica a tu organización, estás en el lugar correcto.
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
@@ -569,6 +707,84 @@ const Home = () => {
           </button>
         </div>
       </section>
+
+      {/* --- FOOTER --- */}
+      <footer className="bg-white py-16 px-4 md:px-8 lg:px-16 border-t border-slate-100">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+
+            {/* Columna 1: Info */}
+            <div className="lg:col-span-2">
+              <div className="flex items-center gap-2 mb-6">
+                <img
+                  src={heroImage2}
+
+                  className="w-8 h-8 object-contain"
+                />
+
+              </div>
+              <p className="text-slate-500 text-sm leading-relaxed max-w-xs mb-8">
+                Arquitectura de Inteligencia Sistémica para organizaciones que buscan coherencia, no solo eficiencia.
+              </p>
+              <div className="flex gap-4">
+                <a href="#" className="p-2 bg-slate-50 text-slate-400 hover:text-[#2383e2] hover:bg-blue-50 rounded-full transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                  </svg>
+                </a>
+                <a href="#" className="p-2 bg-slate-50 text-slate-400 hover:text-[#2383e2] hover:bg-blue-50 rounded-full transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                  </svg>
+                </a>
+                <a href="#" className="p-2 bg-slate-50 text-slate-400 hover:text-[#2383e2] hover:bg-blue-50 rounded-full transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+            {/* Columna 2: Explorar */}
+            <div>
+              <h4 className="font-bold text-slate-900 mb-6">Explorar</h4>
+              <ul className="space-y-4 text-sm text-slate-500">
+                <li><a href="#investigacion" className="hover:text-[#2383e2] transition-colors">La Trampa Arquitectónica</a></li>
+                <li><a href="#sia" className="hover:text-[#2383e2] transition-colors">Arquitectura SIA</a></li>
+                <li><a href="#layers" className="hover:text-[#2383e2] transition-colors">Arquitectura de Materialidad</a></li>
+              </ul>
+            </div>
+
+            {/* Columna 3: Recursos */}
+            <div>
+              <h4 className="font-bold text-slate-900 mb-6">Recursos</h4>
+              <ul className="space-y-4 text-sm text-slate-500">
+                <li><a href="#" className="hover:text-[#2383e2] transition-colors">Whitepaper Técnico</a></li>
+                <li><a href="#" className="hover:text-[#2383e2] transition-colors">Casos de Estudio</a></li>
+                <li><a href="#" className="hover:text-[#2383e2] transition-colors">SIAF Documentation</a></li>
+                <li><a href="/login" className="hover:text-[#2383e2] transition-colors">Acceder al MVP</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+            <p className="text-xs text-slate-400">© 2025 Mindgrate. Todos los derechos reservados.</p>
+
+            <div className="flex gap-8 text-xs text-slate-400">
+              <a href="#" className="hover:text-slate-600 transition-colors">Privacidad</a>
+              <a href="#" className="hover:text-slate-600 transition-colors">Términos</a>
+              <a href="#" className="hover:text-slate-600 transition-colors">Cookies</a>
+            </div>
+
+            {/* Icono a la derecha */}
+            <div className="hidden md:block">
+              <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all">
+                <img src={heroImage} alt="Mindgrate Icon" className="w-6 h-6 object-contain" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
 
       <WaitlistModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div >

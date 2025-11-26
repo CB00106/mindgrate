@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Environment, OrbitControls } from '@react-three/drei';
+import { Environment } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import Hero3D from './Hero3D';
 import ParticlesBackground from './ParticlesBackground';
@@ -16,7 +16,7 @@ const Hero: React.FC = () => {
                         <ambientLight intensity={0.5} />
                         <pointLight position={[10, 10, 10]} intensity={1} />
                         <ParticlesBackground />
-                        <group position={[2, 0, 0]} className="hidden md:block">
+                        <group position={[2, 0, 0]}>
                             {/* Positioned to the right for desktop */}
                             <Hero3D />
                         </group>
