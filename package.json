@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@hcaptcha/react-hcaptcha": "^1.12.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.0",
     "@supabase/supabase-js": "^2.49.9",
     "abort-controller": "^3.0.0",
     "clsx": "^2.0.0",
@@ -30,9 +32,11 @@
     "playwright": "^1.52.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-is": "^19.2.0",
     "react-router-dom": "^6.20.1",
     "recharts": "^3.0.0",
-    "tailwind-merge": "^2.2.0"
+    "tailwind-merge": "^2.2.0",
+    "three": "^0.181.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
