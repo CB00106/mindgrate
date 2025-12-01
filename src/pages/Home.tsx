@@ -166,6 +166,9 @@ const WaitlistModal: React.FC<WaitlistModalProps> = ({ isOpen, onClose }) => {
 const Home = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLayer, setSelectedLayer] = useState('layer-3');
+  const [hoveredSiaSection, setHoveredSiaSection] = useState<string | null>(null);
+
+  const getOpacity = (section: string) => hoveredSiaSection && hoveredSiaSection !== section ? 0.2 : 1;
 
   return (
     <div className="bg-white font-sans w-full min-h-screen flex flex-col">
@@ -351,7 +354,7 @@ const Home = () => {
                 {/* Contenido expandido - solo visible en hover */}
                 <div className="opacity-0 max-h-0 lg:group-hover:opacity-100 lg:group-hover:max-h-[500px] transition-all duration-700 overflow-hidden">
                   <p className="text-slate-300 mb-4 leading-relaxed relative z-10 text-sm">
-                    Mindgrate disuelve los silos permitiendo que la inteligencia fluya transversalmente. Creamos una <strong className="text-white">nueva topología de trabajo</strong>.
+                    Mindgrate presenta una nueva categoría tecnológica: El Systemic Intelligence Architecture (SIA). No es solo software, es una infraestructura de gobernanza diseñada para que las organizaciones operen como sistemas vivos y coherentes.
                   </p>
 
                   <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 relative z-10">
@@ -360,7 +363,7 @@ const Home = () => {
                       <span className="font-bold text-sm">Coherencia Sistémica</span>
                     </div>
                     <p className="text-xs text-slate-400 pl-8">
-                      Alineación matemática entre estrategia y ejecución.
+                      El marco permite que la eficiencia digital no canibalice la viabilidad física de la organización. Es la transición fundamental a una IA Regenerativa..
                     </p>
                   </div>
                 </div>
@@ -407,7 +410,7 @@ const Home = () => {
               <div className="relative w-[400px] h-[400px] md:w-[500px] md:h-[500px]">
 
                 {/* SVG SIA SYSTEM */}
-                <svg viewBox="0 0 400 400" className="w-full h-full drop-shadow-2xl">
+                <svg viewBox="0 0 600 600" className="w-full h-full drop-shadow-2xl">
                   {/* Definiciones de Gradientes */}
                   <defs>
                     <linearGradient id="gradCore" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -416,69 +419,107 @@ const Home = () => {
                     </linearGradient>
                   </defs>
 
-                  {/* 3. GOVERNANCE LAYER (Anillo Exterior) */}
-                  <g className="sia-ring-outer">
-                    {/* El anillo fragmentado que representa el filtro ético */}
-                    <circle cx="200" cy="200" r="180" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="20 40" opacity="0.3" />
-                    <circle cx="200" cy="200" r="170" fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="10 10" opacity="0.2" />
+                  {/* 3. GOVERNANCE LAYER (Anillo Exterior - Viabilidad) */}
+                  <g className="sia-ring-outer" style={{ transition: 'opacity 0.3s', opacity: getOpacity('governance') }}>
+                    {/* El anillo fragmentado que representa el filtro ético - AMPLIADO */}
+                    <circle cx="300" cy="300" r="300" fill="none" stroke="#22c92fff" strokeWidth="2" strokeDasharray="20 40" opacity="0.3" />
+                    <circle cx="300" cy="300" r="290" fill="none" stroke="#08962cff" strokeWidth="1" strokeDasharray="10 10" opacity="0.2" />
                     {/* Icono de escudo orbitando (Simulado con un punto) */}
-                    <circle cx="200" cy="20" r="4" fill="#94a3b8" />
-                    <circle cx="200" cy="380" r="4" fill="#94a3b8" />
+                    <circle cx="430" cy="30" r="4" fill="#3bc251ff" />
+                    <circle cx="430" cy="570" r="4" fill="#3bc251ff" />
                   </g>
 
-                  {/* 2. MINDOPS LAYER (Red Intermedia) */}
-                  <g>
-                    {/* Conexiones de datos fluyendo hacia el centro */}
-                    <line x1="200" y1="200" x2="100" y2="100" stroke="#2383e2" strokeWidth="2" opacity="0.4" className="sia-connection" />
-                    <line x1="200" y1="200" x2="300" y2="100" stroke="#2383e2" strokeWidth="2" opacity="0.4" className="sia-connection" />
-                    <line x1="200" y1="200" x2="100" y2="300" stroke="#2383e2" strokeWidth="2" opacity="0.4" className="sia-connection" />
-                    <line x1="200" y1="200" x2="300" y2="300" stroke="#2383e2" strokeWidth="2" opacity="0.4" className="sia-connection" />
+                  <g style={{ transition: 'opacity 0.3s', opacity: getOpacity('mindops') }}>
+                    {/* NUEVO: Anillo de Conexión MindOps */}
+                    <circle cx="300" cy="300" r="142" fill="none" stroke="#2383e2" strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
 
-                    {/* Nodo 1: OPERACIONES */}
-                    <g className="group">
-                      <circle cx="100" cy="100" r="18" fill="#0f172a" stroke="#2383e2" strokeWidth="2" />
-                      <text x="100" y="105" textAnchor="middle" fontSize="9" fill="#2383e2" fontFamily="monospace" fontWeight="bold">OPS</text>
-                      {/* Etiqueta Descriptiva */}
-                      <text x="100" y="135" textAnchor="middle" fontSize="10" fill="#94a3b8" fontFamily="sans-serif" className="sia-label">Operaciones</text>
-                    </g>
+                    {/* 2. MINDOPS LAYER (Red Intermedia) */}
+                    <g>
+                      {/* Conexiones de datos fluyendo hacia el centro */}
+                      <line x1="300" y1="300" x2="200" y2="200" stroke="#2383e2" strokeWidth="2" opacity="0.4" className="sia-connection" />
+                      <line x1="300" y1="300" x2="400" y2="200" stroke="#2383e2" strokeWidth="2" opacity="0.4" className="sia-connection" />
+                      <line x1="300" y1="300" x2="200" y2="400" stroke="#2383e2" strokeWidth="2" opacity="0.4" className="sia-connection" />
+                      <line x1="300" y1="300" x2="400" y2="400" stroke="#2383e2" strokeWidth="2" opacity="0.4" className="sia-connection" />
 
-                    {/* Nodo 2: FINANZAS */}
-                    <g className="group">
-                      <circle cx="300" cy="100" r="18" fill="#0f172a" stroke="#2383e2" strokeWidth="2" />
-                      <text x="300" y="105" textAnchor="middle" fontSize="9" fill="#2383e2" fontFamily="monospace" fontWeight="bold">FIN</text>
-                      {/* Etiqueta Descriptiva */}
-                      <text x="300" y="135" textAnchor="middle" fontSize="10" fill="#94a3b8" fontFamily="sans-serif" className="sia-label">Finanzas</text>
-                    </g>
+                      {/* NUEVO: Conexiones a Nodos Humanos */}
+                      <line x1="200" y1="200" x2="120" y2="120" stroke="#2383e2" strokeWidth="1" opacity="0.3" />
+                      <line x1="400" y1="200" x2="480" y2="120" stroke="#2383e2" strokeWidth="1" opacity="0.3" />
+                      <line x1="200" y1="400" x2="120" y2="480" stroke="#2383e2" strokeWidth="1" opacity="0.3" />
+                      <line x1="400" y1="400" x2="480" y2="480" stroke="#2383e2" strokeWidth="1" opacity="0.3" />
 
-                    {/* Nodo 3: LEGAL */}
-                    <g className="group">
-                      <circle cx="100" cy="300" r="18" fill="#0f172a" stroke="#2383e2" strokeWidth="2" />
-                      <text x="100" y="305" textAnchor="middle" fontSize="9" fill="#2383e2" fontFamily="monospace" fontWeight="bold">LEG</text>
-                      {/* Etiqueta Descriptiva */}
-                      <text x="100" y="335" textAnchor="middle" fontSize="10" fill="#94a3b8" fontFamily="sans-serif" className="sia-label">Legal</text>
-                    </g>
+                      {/* Nodo 1: OPERACIONES */}
+                      <g className="group">
+                        <circle cx="200" cy="200" r="18" fill="#ffffffff" stroke="#2383e2" strokeWidth="2" />
+                        <text x="200" y="205" textAnchor="middle" fontSize="9" fill="#2383e2" fontFamily="monospace" fontWeight="bold">OPS</text>
+                        <text x="200" y="235" textAnchor="middle" fontSize="10" fill="#94a3b8" fontFamily="sans-serif" className="sia-label">Operaciones</text>
+                      </g>
+                      {/* Nodo Humano 1 */}
+                      <g className="group">
+                        <circle cx="120" cy="120" r="14" fill="#f0f9ff" stroke="#2383e2" strokeWidth="1" />
+                        <g transform="translate(111, 111) scale(0.75)">
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#2383e2" />
+                        </g>
+                      </g>
 
-                    {/* Nodo 4: TALENTO */}
-                    <g className="group">
-                      <circle cx="300" cy="300" r="18" fill="#0f172a" stroke="#2383e2" strokeWidth="2" />
-                      <text x="300" y="305" textAnchor="middle" fontSize="9" fill="#2383e2" fontFamily="monospace" fontWeight="bold">TAL</text>
-                      {/* Etiqueta Descriptiva */}
-                      <text x="300" y="335" textAnchor="middle" fontSize="10" fill="#94a3b8" fontFamily="sans-serif" className="sia-label">Talento</text>
+
+                      {/* Nodo 2: FINANZAS */}
+                      <g className="group">
+                        <circle cx="400" cy="200" r="18" fill="#ffffffff" stroke="#2383e2" strokeWidth="2" />
+                        <text x="400" y="205" textAnchor="middle" fontSize="9" fill="#2383e2" fontFamily="monospace" fontWeight="bold">FIN</text>
+                        <text x="400" y="235" textAnchor="middle" fontSize="10" fill="#94a3b8" fontFamily="sans-serif" className="sia-label">Finanzas</text>
+                      </g>
+                      {/* Nodo Humano 2 */}
+                      <g className="group">
+                        <circle cx="480" cy="120" r="14" fill="#f0f9ff" stroke="#2383e2" strokeWidth="1" />
+                        <g transform="translate(471, 111) scale(0.75)">
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#2383e2" />
+                        </g>
+                      </g>
+
+                      {/* Nodo 3: LEGAL */}
+                      <g className="group">
+                        <circle cx="200" cy="400" r="18" fill="#ffffffff" stroke="#2383e2" strokeWidth="2" />
+                        <text x="200" y="405" textAnchor="middle" fontSize="9" fill="#2383e2" fontFamily="monospace" fontWeight="bold">LEG</text>
+                        <text x="200" y="435" textAnchor="middle" fontSize="10" fill="#94a3b8" fontFamily="sans-serif" className="sia-label">Legal</text>
+                      </g>
+                      {/* Nodo Humano 3 */}
+                      <g className="group">
+                        <circle cx="120" cy="480" r="14" fill="#f0f9ff" stroke="#2383e2" strokeWidth="1" />
+                        <g transform="translate(111, 471) scale(0.75)">
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#2383e2" />
+                        </g>
+                      </g>
+
+                      {/* Nodo 4: TALENTO */}
+                      <g className="group">
+                        <circle cx="400" cy="400" r="18" fill="#ffffffff" stroke="#2383e2" strokeWidth="2" />
+                        <text x="400" y="405" textAnchor="middle" fontSize="9" fill="#2383e2" fontFamily="monospace" fontWeight="bold">TAL</text>
+                        <text x="400" y="435" textAnchor="middle" fontSize="10" fill="#94a3b8" fontFamily="sans-serif" className="sia-label">Talento</text>
+                      </g>
+                      {/* Nodo Humano 4 */}
+                      <g className="group">
+                        <circle cx="480" cy="480" r="14" fill="#f0f9ff" stroke="#2383e2" strokeWidth="1" />
+                        <g transform="translate(471, 471) scale(0.75)">
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#2383e2" />
+                        </g>
+                      </g>
                     </g>
                   </g>
 
                   {/* 1. DYNAMIC PROJECT CORE (Centro) */}
-                  <circle cx="200" cy="200" r="40" fill="url(#gradCore)" className="sia-core" />
-                  <text x="200" y="205" textAnchor="middle" fontSize="14" fontWeight="bold" fill="white">DPC</text>
+                  <g style={{ transition: 'opacity 0.3s', opacity: getOpacity('dpc') }}>
+                    <circle cx="300" cy="300" r="40" fill="url(#gradCore)" className="sia-core" />
+                    <text x="300" y="305" textAnchor="middle" fontSize="14" fontWeight="bold" fill="white">DPC</text>
 
-                  {/* Anillo interior rotando */}
-                  <circle cx="200" cy="200" r="55" fill="none" stroke="#2383e2" strokeWidth="1" strokeDasharray="5 5" opacity="0.5" className="sia-ring-inner" />
+                    {/* Anillo interior rotando */}
+                    <circle cx="300" cy="300" r="55" fill="none" stroke="#2383e2" strokeWidth="1" strokeDasharray="5 5" opacity="0.5" className="sia-ring-inner" />
+                  </g>
 
                 </svg>
 
                 {/* Etiquetas Flotantes */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 bg-green-50 text-green-700 text-xs px-2 py-1 rounded border border-green-300 backdrop-blur-sm">
-                  Viabilidad
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-10   bg-green-50 text-green-700 text-xs px-2 py-1 rounded border border-green-300 backdrop-blur-sm">
+                  Governance Core
                 </div>
               </div>
             </div>
@@ -487,7 +528,11 @@ const Home = () => {
             <div className="w-full lg:w-1/2 space-y-6">
 
               {/* Componente 1: DPC */}
-              <div className="group relative bg-slate-50 p-6 rounded-xl border border-slate-200 hover:bg-blue-50 hover:border-[#2383e2] transition-all duration-300">
+              <div
+                className="group relative bg-slate-50 p-6 rounded-xl border border-slate-200 hover:bg-blue-50 hover:border-[#2383e2] transition-all duration-300"
+                onMouseEnter={() => setHoveredSiaSection('dpc')}
+                onMouseLeave={() => setHoveredSiaSection(null)}
+              >
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#2383e2] rounded-l-xl"></div>
                 <div className="flex items-start gap-4">
                   <div className="mt-1 p-2 bg-[#2383e2]/10 rounded-lg text-[#2383e2] group-hover:scale-110 transition-transform">
@@ -497,31 +542,39 @@ const Home = () => {
                     <h3 className="text-xl font-extralight text-gray-900 mb-1">Dynamic Project Core (DPC)</h3>
                     <p className="text-xs font-bold text-[#2383e2] uppercase tracking-widest mb-2">El Núcleo Cognitivo</p>
                     <p className="text-slate-600 text-sm leading-relaxed">
-                      Traduce la intención estratégica en parámetros operativos en tiempo real. Es la "fuente única de verdad" que simula viabilidad antes de ejecutar.
+                      El <strong>DPC</strong> es el motor cognitivo que traduce la estrategia de alto nivel en parámetros operativos ajustados en tiempo real. Su valor reside en la Simulación de Viabilidad , que permite mitigar el riesgo al evaluar el impacto sistémico de las decisiones antes de su ejecución.
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Componente 2: MindOps */}
-              <div className="group relative bg-slate-50 p-6 rounded-xl border border-slate-200 hover:bg-blue-50 hover:border-[#2383e2] transition-all duration-300">
+              <div
+                className="group relative bg-slate-50 p-6 rounded-xl border border-slate-200 hover:bg-blue-50 hover:border-[#2383e2] transition-all duration-300"
+                onMouseEnter={() => setHoveredSiaSection('mindops')}
+                onMouseLeave={() => setHoveredSiaSection(null)}
+              >
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#2383e2] rounded-l-xl"></div>
                 <div className="flex items-start gap-4">
                   <div className="mt-1 p-2 bg-[#2383e2]/10 rounded-lg text-[#2383e2] group-hover:scale-110 transition-transform">
                     <Network className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-extralight text-gray-900 mb-1">MindOps + SIAF</h3>
+                    <h3 className="text-xl font-extralight text-gray-900 mb-1">MindOps + Systemic Intelligence Architecture Framework (SIAF)</h3>
                     <p className="text-xs font-bold text-[#2383e2] uppercase tracking-widest mb-2">La Red Operativa</p>
                     <p className="text-slate-600 text-sm leading-relaxed">
-                      Agentes autónomos (Finanzas, Legal, Talento) que ejecutan la táctica. Guiados por el <strong>marco educativo SIAF</strong>, enseñan a la organización a operar en red.
+                      <strong></strong>Los MindOps son asistentes de IA especializados <strong>(por departamento)</strong> que ejecutan automáticamente su trabajo diario, eliminando la microgestión. <strong></strong>El SIAF es el método que enseña a los equipos humanos y a los agentes a pensar y actuar en red<strong></strong>, garantizando la coordinación.
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Componente 3: Governance (TEXTO ACTUALIZADO AQUÍ) */}
-              <div className="group relative bg-slate-50 p-6 rounded-xl border border-slate-200 hover:bg-blue-50 hover:border-[#2383e2] transition-all duration-300">
+              <div
+                className="group relative bg-slate-50 p-6 rounded-xl border border-slate-200 hover:bg-blue-50 hover:border-[#2383e2] transition-all duration-300"
+                onMouseEnter={() => setHoveredSiaSection('governance')}
+                onMouseLeave={() => setHoveredSiaSection(null)}
+              >
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#2383e2] rounded-l-xl"></div>
                 <div className="flex items-start gap-4">
                   <div className="mt-1 p-2 bg-[#2383e2]/10 rounded-lg text-[#2383e2] group-hover:scale-110 transition-transform">
@@ -531,9 +584,9 @@ const Home = () => {
                     <h3 className="text-xl font-extralight text-gray-900 mb-1">Governance Core</h3>
                     <p className="text-xs font-bold text-[#2383e2] uppercase tracking-widest mb-2">Coste Material & Regeneración</p>
                     <p className="text-slate-600 text-sm leading-relaxed">
-                      SIA integra este principio en su núcleo: cada simulación del DPC incluye el <strong>"coste material"</strong> de la estrategia.
+                      <strong>El Filtro Ético que Cuida su Futuro:</strong> Mindgrate opera bajo una regla simple: una decisión no es inteligente si destruye lo que la sostiene (sus recursos naturales, la energía de su equipo, la salud mental).
                       <br /><br />
-                      No permitimos que la eficiencia digital canibalice la viabilidad física de la organización. Es la transición de una <strong>IA extractiva a una IA regenerativa</strong>.
+                      <strong>IA Regenerativa:</strong> Esto nos hace pasar de una IA que solo busca sacar el máximo provecho <strong>(extractiva)</strong> a una IA que ayuda a construir y cuidar las condiciones que permiten el éxito a largo plazo <strong>(regenerativa)</strong>.
                     </p>
                   </div>
                 </div>
@@ -550,9 +603,9 @@ const Home = () => {
 
           {/* Header Simple */}
           <div className="text-center mb-16">
-            <span className="text-xs font-bold tracking-widest text-[#2383e2] uppercase mb-2 block">Ontología del Sistema</span>
+            <span className="text-xs font-bold tracking-widest text-[#2383e2] uppercase mb-2 block">La Visión Fundacional</span>
             <h2 className="text-4xl md:text-5xl font-extralight text-slate-900">
-              Arquitectura de Materialidad
+              Diseñando para la Sostenibilidad Real
             </h2>
           </div>
 
