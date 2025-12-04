@@ -108,7 +108,7 @@ const Header: React.FC = () => {
               <a href="mailto:contacto@mindgrate.com" className="text-sm font-medium text-gray-600 hover:text-black px-4 py-2 rounded-full hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap">
                 Contacto
               </a>
-              <Link to="/login">
+              <Link to="/beta-application">
                 <Button variant="primary" size="sm" className="rounded-full px-6 bg-[#2383e2] hover:bg-[#1d6ab8] text-white border-none shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 whitespace-nowrap">
                   Acceso Beta
                 </Button>
@@ -165,7 +165,7 @@ const Header: React.FC = () => {
                 <a href="mailto:contacto@mindgrate.com" className="block px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-800 font-medium text-center">
                   Contacto
                 </a>
-                <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 rounded-xl bg-[#2383e2] text-white font-bold text-center shadow-md">
+                <Link to="/beta-application" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 rounded-xl bg-[#2383e2] text-white font-bold text-center shadow-md">
                   Acceso Beta
                 </Link>
               </>

@@ -44,6 +44,8 @@ const KineticMesh: React.FC<KineticMeshProps> = ({ color = '#2383e2' }) => {
             size: number;
             pulseSpeed: number;
             pulseOffset: number;
+            colorPhase: number;
+            colorSpeed: number;
 
             constructor(x: number, y: number) {
                 this.originX = x;
@@ -52,11 +54,14 @@ const KineticMesh: React.FC<KineticMeshProps> = ({ color = '#2383e2' }) => {
                 this.y = y;
                 this.vx = 0;
                 this.vy = 0;
-                // Variación de tamaño para profundidad
-                this.size = Math.random() * CONFIG.particleBaseSize + 1;
+                // Variación de tamaño para profundidad - AUMENTADO
+                this.size = Math.random() * CONFIG.particleBaseSize + 1.5;
                 // Configuración para efecto "Breathing"
                 this.pulseSpeed = 0.05 + Math.random() * 0.03;
                 this.pulseOffset = Math.random() * Math.PI * 2;
+                // Configuración para variación de color
+                this.colorPhase = Math.random() * Math.PI * 2;
+                this.colorSpeed = 0.02 + Math.random() * 0.01;
             }
 
             update() {
@@ -100,15 +105,47 @@ const KineticMesh: React.FC<KineticMeshProps> = ({ color = '#2383e2' }) => {
 
             draw(context: CanvasRenderingContext2D) {
                 // Cálculo de Opacidad (Breathing) - BRILLO AUMENTADO
-                const alpha = 0.3 + Math.sin(tick * this.pulseSpeed + this.pulseOffset) * 0.5;
+                const alpha = 0.5 + Math.sin(tick * this.pulseSpeed + this.pulseOffset) * 0.4;
 
                 if (alpha <= 0) return;
 
+                // Calcular el color basado en la fase de color
+                const colorCycle = (Math.sin(tick * this.colorSpeed + this.colorPhase) + 1) / 2;
+
+                let r, g, b;
+
+                if (colorCycle < 0.33) {
+                    // Transición de Azul Metálico a Negro
+                    const t = colorCycle / 0.33;
+                    r = Math.floor(35 * (1 - t));
+                    g = Math.floor(131 * (1 - t));
+                    b = Math.floor(226 * (1 - t));
+                } else if (colorCycle < 0.66) {
+                    // Transición de Negro a Dorado
+                    const t = (colorCycle - 0.33) / 0.33;
+                    r = Math.floor(212 * t);
+                    g = Math.floor(175 * t);
+                    b = Math.floor(55 * t);
+                } else {
+                    // Transición de Dorado a Azul Metálico
+                    const t = (colorCycle - 0.66) / 0.34;
+                    r = Math.floor(212 * (1 - t) + 35 * t);
+                    g = Math.floor(175 * (1 - t) + 131 * t);
+                    b = Math.floor(55 * (1 - t) + 226 * t);
+                }
+
                 context.beginPath();
                 context.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                context.fillStyle = CONFIG.color;
+                context.fillStyle = `rgb(${r}, ${g}, ${b})`;
                 context.globalAlpha = alpha;
                 context.fill();
+
+                // Agregar un brillo sutil
+                context.globalAlpha = alpha * 0.3;
+                context.arc(this.x, this.y, this.size * 1.5, 0, Math.PI * 2);
+                context.fillStyle = `rgb(${Math.min(r + 50, 255)}, ${Math.min(g + 50, 255)}, ${Math.min(b + 50, 255)})`;
+                context.fill();
+
                 context.globalAlpha = 1;
             }
         }

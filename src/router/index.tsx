@@ -3,14 +3,15 @@ import { MainLayout } from '@/components/layout';
 import { AuthPage, ProtectedRoute } from '@/components';
 import AuthDebugger from '@/components/AuthDebugger';
 import ConnectionsDebugger from '@/components/ConnectionsDebugger';
-import { 
-  Home, 
-  ChatPage, 
-  MyMindOpPage, 
-  SearchPage, 
-  NotificationsPage, 
-  ProfilePage, 
-  NotFound 
+import {
+  Home,
+  ChatPage,
+  MyMindOpPage,
+  SearchPage,
+  NotificationsPage,
+  ProfilePage,
+  BetaApplication,
+  NotFound
 } from '@/pages';
 
 export const router = createBrowserRouter([
@@ -44,7 +45,8 @@ export const router = createBrowserRouter([
           <ProtectedRoute requireAuth={false}>
             <AuthPage defaultMode="signup" />
           </ProtectedRoute>
-        ),      },
+        ),
+      },
       {
         path: 'chat',
         element: (
@@ -76,13 +78,14 @@ export const router = createBrowserRouter([
             <NotificationsPage />
           </ProtectedRoute>
         ),
-      },      {
+      }, {
         path: 'profile',
         element: (
           <ProtectedRoute>
             <ProfilePage />
           </ProtectedRoute>
-        ),      },      {
+        ),
+      }, {
         path: 'auth-debug',
         element: <AuthDebugger />,
       },
@@ -93,6 +96,10 @@ export const router = createBrowserRouter([
             <ConnectionsDebugger />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'beta-application',
+        element: <BetaApplication />,
       },
       {
         path: '*',

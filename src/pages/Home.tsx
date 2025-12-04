@@ -174,22 +174,18 @@ const Home = () => {
     <div className="bg-white font-sans w-full min-h-screen flex flex-col">
 
       {/* --- HERO SECTION --- */}
-      <section className="relative w-full min-h-screen flex flex-col items-center justify-center overflow-hidden pt-15 bg-white">
+      <section className="relative w-full min-h-screen flex flex-col items-center justify-center overflow-hidden pt-15 bg-black">
         <KineticMesh />
 
-        <div className="relative z-10 text-center px-4 max-w-5xl mx-auto space-y-8">
+        <div className="relative z-10 text-center px-4 max-w-5xl mx-auto space-y-3">
           <motion.div
             initial={{ opacity: 1, y: 0 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0 }}
             className="flex flex-col items-center"
           >
-            <img
-              src={heroImage}
-              alt="Mindgrate"
-              className="w-20 h-20 md:w-24 md:h-24 object-contain mb-3"
-            />
-            <h1 className="text-5xl md:text-7xl font-extralight text-gray-900 tracking-tight leading-[1.1] mb-6">
+
+            <h1 className="text-5xl md:text-7xl font-extralight text-white tracking-tight leading-[1.1] mb-6">
               IA diseñada como un sistema, no como un parche.
             </h1>
           </motion.div>
@@ -198,23 +194,20 @@ const Home = () => {
             initial={{ opacity: 1, y: 0 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0 }}
-            className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed"
+            className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed"
           >
-            Diseñamos la arquitectura que une estrategia, datos y automatización en un solo flujo inteligente.
+            Pasamos de la optimización ciega a la viabilidad real: inteligencia que valida tus decisiones en el mundo físico.
           </motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.6 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8"
+            className="flex items-center justify-center pt-8"
           >
             <a href="/login" className="px-8 py-4 bg-[#2383e2] text-white rounded-2xl font-bold text-lg hover:bg-[#1d6ab8] transition-all shadow-lg hover:shadow-blue-200 hover:-translate-y-1 flex items-center gap-2">
               Prueba el MVP <ArrowRight className="w-5 h-5" />
             </a>
-            <button onClick={() => setIsModalOpen(true)} className="px-8 py-4 bg-white text-gray-900 border border-gray-200 rounded-2xl font-bold text-lg hover:bg-gray-50 transition-all shadow-sm hover:shadow-md hover:-translate-y-1">
-              Unirse a la lista de espera
-            </button>
           </motion.div>
         </div>
       </section >
@@ -335,9 +328,6 @@ const Home = () => {
 
                 {/* Animated gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-
-                {/* Dot pattern - PUNTOS BLANCOS */}
-                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(white 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
                 {/* Badge */}
                 <div className="absolute top-4 right-4 px-3 py-1 bg-[#2383e2]/20 text-blue-300 border border-[#2383e2]/40 text-xs font-bold uppercase rounded-full backdrop-blur-sm">
@@ -669,9 +659,9 @@ const Home = () => {
                     <Target className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-extralight text-slate-900 mb-2">Capa Estratégica: Materialidad de la Intención</h3>
+                    <h3 className="text-xl font-extralight text-slate-900 mb-2">El "Por Qué" de nuestras acciones</h3>
                     <p className="text-slate-600 text-base leading-relaxed">
-                      Donde reside el propósito y los horizontes. El liderazgo humano define la dirección y los criterios de <strong>viabilidad material</strong> que el sistema debe respetar. Es la fuente de la voluntad del sistema.
+                      Si la tecnología se encarga del "cómo" (la velocidad), nosotros nos encargamos del "por qué" (el sentido). En esta capa, definimos qué significa realmente tener éxito. No se trata solo de hacerlo rápido, sino de hacerlo bien: cuidando a la gente y los recursos. Aquí es donde la voluntad humana guía a la inteligencia del sistema, asegurando que nunca perdamos el norte por perseguir la eficiencia ciega.
                     </p>
                   </div>
                 </div>
@@ -688,21 +678,12 @@ const Home = () => {
                     <Cpu className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-extralight text-slate-900 mb-2">Capa Operativa: Materialidad de la Estructura</h3>
+                    <h3 className="text-xl font-extralight text-slate-900 mb-2">Nuestro Manual Vivo</h3>
                     <p className="text-slate-600 text-base leading-relaxed mb-4">
-                      El dominio de las reglas y la coherencia. Aquí, la gobernanza por intención traduce el propósito abstracto en protocolos de acción interoperables para todo el sistema.
+                      Aquí es donde reside el "cómo" hacemos las cosas. Es el espacio donde aprendemos a operar como una red y no como islas aisladas. En lugar de recibir órdenes ciegas, esta capa convierte la estrategia de la empresa en protocolos claros y útiles que nos ayudan a tomar decisiones autónomas, sabiendo que estamos alineados con el resto de la organización.
                     </p>
 
-                    {/* Sub-bloque SIAF */}
-                    <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-5">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="w-4 h-4 text-[#2383e2]" />
-                        <span className="text-sm font-bold text-[#2383e2] uppercase tracking-wide">SIAF: Gramática Operativa</span>
-                      </div>
-                      <p className="text-sm text-slate-600 leading-relaxed">
-                        El marco que estructura la realidad operativa. Establece los flujos, roles y lenguajes comunes para que la inteligencia humana y artificial operen sin fricción y con total coherencia.
-                      </p>
-                    </div>
+
                   </div>
                 </div>
               </div>
@@ -718,9 +699,9 @@ const Home = () => {
                     <Zap className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-extralight text-slate-900 mb-2">Capa Táctica: Materialidad del Trabajo</h3>
+                    <h3 className="text-xl font-extralight text-slate-900 mb-2">Trabajo sin Fricción</h3>
                     <p className="text-slate-600 text-base leading-relaxed">
-                      El plano de la fricción y la realidad viva. El <strong>DPC</strong> centraliza la ejecución, gestiona recursos y extrae datos reales para informar a las capas superiores, asegurando que la estrategia tenga tracción en el mundo físico.
+                      Es el entorno donde ocurre tu trabajo diario. El objetivo de esta capa es eliminar el ruido administrativo y la microgestión. El sistema se encarga de coordinar los flujos y conectar los datos, permitiéndote concentrarte en crear valor. Además, asegura que tu esfuerzo real sea visible y cuente para adaptar la estrategia de la empresa, evitando que te pidan imposibles.
                     </p>
                   </div>
                 </div>
@@ -732,9 +713,9 @@ const Home = () => {
         </div>
       </section>
       {/* --- BLOQUE 4: MINDGRATE --- */}
-      <section className="relative py-32 md:py-48 px-4 bg-white overflow-hidden">
-        <div className="max-w-full mx-auto flex items-center justify-center min-h-[60vh]">
-          <h2 className="text-[15vw] md:text-[20vw] lg:text-[25vw] font-extralight text-slate-900 tracking-tighter leading-none select-none">
+      <section className="relative py-32 md:py-48 bg-white overflow-hidden">
+        <div className="w-full px-8 md:px-12 lg:px-16 mx-auto flex items-center justify-center min-h-[60vh]">
+          <h2 className="text-[13vw] md:text-[18vw] lg:text-[22vw] font-extralight text-slate-900 tracking-tighter leading-none select-none text-center">
             mindgrate
           </h2>
         </div>
