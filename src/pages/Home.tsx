@@ -206,7 +206,7 @@ const Home = () => {
             className="flex items-center justify-center pt-8"
           >
             <a href="/beta-application" className="px-8 py-4 bg-[#2383e2] text-white rounded-2xl font-bold text-lg hover:bg-[#1d6ab8] transition-all shadow-lg hover:shadow-blue-200 hover:-translate-y-1 flex items-center gap-2">
-              Prueba el MVP <ArrowRight className="w-5 h-5" />
+              Acceso Beta <ArrowRight className="w-5 h-5" />
             </a>
           </motion.div>
         </div>
@@ -726,18 +726,20 @@ const Home = () => {
         <KineticMesh color="#ffffff" />
         <div className="max-w-4xl mx-auto space-y-8 relative z-10">
           <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
-            ¿Quieres profundizar o necesitas claridad adicional?
+            ¿Te intriga la Inteligencia Sistémica?
           </h2>
           <p className="text-xl text-gray-300">
-            Mindgrate trabaja con conceptos que trascienden el software tradicional.
-            Si quieres explorar la arquitectura completa en detalle o tienes dudas sobre
-            Cómo se aplica a tu organización, estás en el lugar correcto.
+            Mindgrate propone un cambio fundamental: que la IA deje de acelerar tareas y empiece a sincronizar la coherencia de tu empresa. No buscamos futuros más rápidos, sino futuros que se sostengan en el tiempo.
+
+
+
+            Si quieres entender a fondo la tesis detrás de la Systemic Intelligence Architecture y por qué es la infraestructura obligatoria para el siglo XXI, profundiza en nuestros análisis.
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
             className="px-10 py-4 bg-[#2383e2] text-white font-bold rounded-2xl hover:bg-[#1d6ab8] transition-all shadow-lg hover:shadow-blue-900 hover:-translate-y-1 text-lg"
           >
-            Unirse a la Lista de Espera
+            Explorar la Visión en el Blog
           </button>
         </div>
       </section>
