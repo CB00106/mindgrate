@@ -713,8 +713,8 @@ const Home = () => {
         </div>
       </section>
       {/* --- BLOQUE 4: MINDGRATE --- */}
-      <section className="relative py-32 md:py-48 bg-white overflow-hidden">
-        <div className="w-full px-8 md:px-12 lg:px-16 mx-auto flex items-center justify-center min-h-[60vh]">
+      <section className="sticky top-0 h-screen flex items-center justify-center bg-white overflow-hidden z-0">
+        <div className="w-full px-8 md:px-12 lg:px-16 mx-auto flex items-center justify-center">
           <h2 className="text-[13vw] md:text-[18vw] lg:text-[22vw] font-extralight text-slate-900 tracking-tighter leading-none select-none text-center">
             mindgrate
           </h2>
@@ -722,7 +722,7 @@ const Home = () => {
       </section>
 
       {/* --- WAITLIST CTA --- */}
-      <section className="relative py-24 px-4 md:px-8 lg:px-16 bg-black text-white text-center overflow-hidden">
+      <section className="relative z-10 py-24 px-4 md:px-8 lg:px-16 bg-black text-white text-center overflow-hidden">
         <KineticMesh color="#ffffff" />
         <div className="max-w-4xl mx-auto space-y-8 relative z-10">
           <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
@@ -745,7 +745,7 @@ const Home = () => {
       </section>
 
       {/* --- FOOTER --- */}
-      <footer className="bg-white py-16 px-4 md:px-8 lg:px-16 border-t border-slate-100">
+      <footer className="relative z-10 bg-white py-16 px-4 md:px-8 lg:px-16 border-t border-slate-100">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
 
