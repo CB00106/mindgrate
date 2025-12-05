@@ -50,7 +50,7 @@ const Header: React.FC = () => {
 
   return (
     <header className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4">
-      <div className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-blue-100/20 rounded-full px-6 py-3 flex items-center max-w-5xl w-full transition-all duration-300">
+      <div className="bg-white/70 backdrop-blur-sm border border-white/40 shadow-xl shadow-blue-100/20 rounded-full px-6 py-3 flex items-center max-w-5xl w-full transition-all duration-300">
 
         {/* LEFT: Logo */}
         <div className="flex items-center justify-start flex-1">

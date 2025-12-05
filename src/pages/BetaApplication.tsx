@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -129,7 +129,7 @@ const BetaApplication: React.FC = () => {
             </motion.div>
 
             {/* Contenido */}
-            <div className="relative z-10 max-w-4xl mx-auto px-6 pt-28 pb-20">
+            <div className="relative z-10 max-w-4xl mx-auto px-6 pt-40 pb-20">
                 {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, AlertTriangle, Layers, LayoutTemplate, X, CheckCircle2, BrainCircuit, Network, ShieldCheck, Target, Cpu, Zap, FileText } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Layers, LayoutTemplate, X, CheckCircle2, BrainCircuit, Network, ShieldCheck, Target, Cpu, Zap } from 'lucide-react';
 import KineticMesh from '@/components/landing/KineticMesh';
 import supabase from '@/services/supabaseClient';
 import { logger } from '@/utils/logger';
@@ -205,7 +205,7 @@ const Home = () => {
             transition={{ delay: 0.4, duration: 0.6 }}
             className="flex items-center justify-center pt-8"
           >
-            <a href="/login" className="px-8 py-4 bg-[#2383e2] text-white rounded-2xl font-bold text-lg hover:bg-[#1d6ab8] transition-all shadow-lg hover:shadow-blue-200 hover:-translate-y-1 flex items-center gap-2">
+            <a href="/beta-application" className="px-8 py-4 bg-[#2383e2] text-white rounded-2xl font-bold text-lg hover:bg-[#1d6ab8] transition-all shadow-lg hover:shadow-blue-200 hover:-translate-y-1 flex items-center gap-2">
               Prueba el MVP <ArrowRight className="w-5 h-5" />
             </a>
           </motion.div>

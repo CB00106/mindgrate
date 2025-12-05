@@ -52,7 +52,7 @@ const Navbar: React.FC = () => {
     { path: '/notifications', label: 'Follow Request' },];
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-gray-200/50 px-6 py-4 shadow-sm transition-all duration-300">
+    <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-none border-b border-gray-200/50 px-6 py-4 shadow-sm transition-all duration-300">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
