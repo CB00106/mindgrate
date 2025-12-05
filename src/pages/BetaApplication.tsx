@@ -53,15 +53,14 @@ const BetaApplication: React.FC = () => {
                 .insert([
                     {
                         full_name: formData.fullName,
-                        email: formData.email,
-                        organization: formData.organization,
+                        work_email: formData.email,
+                        organization_name: formData.organization,
                         role: formData.role,
-                        main_challenge: formData.mainChallenge,
-                        priority: formData.priority,
+                        primary_challenge: formData.mainChallenge,
+                        primary_goal: formData.priority,
                         team_size: formData.teamSize,
-                        tools: formData.tools,
-                        commitment: formData.commitment,
-                        created_at: new Date().toISOString(),
+                        current_tools: formData.tools,
+                        siaf_adoption_willingness: formData.commitment,
                     },
                 ])
                 .select();

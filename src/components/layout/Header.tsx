@@ -105,7 +105,7 @@ const Header: React.FC = () => {
             </>
           ) : (
             <>
-              <a href="mailto:contacto@mindgrate.com" className="text-sm font-medium text-gray-600 hover:text-black px-4 py-2 rounded-full hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap">
+              <a href="mailto:admin@mindgrate.net" className="text-sm font-medium text-gray-600 hover:text-black px-4 py-2 rounded-full hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap">
                 Contacto
               </a>
               <Link to="/beta-application">
